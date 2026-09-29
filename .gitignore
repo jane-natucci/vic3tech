@@ -1,0 +1,6 @@
+# Generated from Paradox's game files by extract.rb -- deployed to the site,
+# never committed. Only our own files in vic3/ are tracked.
+/vic3/*
+!/vic3/favicon.svg
+!/vic3/og-image.jpg
+.DS_Store
