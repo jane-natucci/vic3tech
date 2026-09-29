@@ -40,7 +40,7 @@ Two kinds of deploy, because the game data can only be generated where Victoria 
 > [!IMPORTANT]
 > **The very first deploy must be a full local one** (`ruby extract.rb && ./deploy.sh`). CI has no game data to upload, so until S3 has a `vic3/data.json`, the GitHub Action stops with an error saying so. The same applies to a fresh bucket.
 
-Local deploys use the `personal` AWS profile by default (`AWS_PROFILE` overrides it). CI logs into AWS through GitHub's OIDC, into a role that can only write to this site's bucket (`terraform-cloud`: `main/vic3tech_jane_berlin.tf`), so no AWS keys are stored in this repo.
+Local deploys use the `personal` AWS profile by default (`AWS_PROFILE` overrides it). CI logs into AWS through GitHub's OIDC, into a role that can only write to this site's bucket (defined in the site's separate infrastructure config), so no AWS keys are stored in this repo.
 
 ## Known approximations
 

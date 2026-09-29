@@ -2,7 +2,7 @@ name: Deploy
 # Every push to main uploads the page and our own files (not the game data,
 # which only deploy.sh run locally can generate -- see README). AWS access
 # comes from GitHub's OIDC login into a role that only this repo's main
-# branch can assume (terraform-cloud: main/vic3tech_jane_berlin.tf), so no
+# branch can assume (set up in the site's separate infrastructure config), so no
 # AWS keys are stored here.
 on:
   push:

@@ -59,4 +59,12 @@ fi
 aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
 
+# The "share this save" Lambda (lambda/share.mjs). Terraform creates the
+# function; its code ships from here. A failure here doesn't undo the site
+# deploy above, so it only warns (e.g. before the function exists).
+( cd lambda && zip -q -X "$tmp/share.zip" share.mjs ) &&
+  aws lambda update-function-code --function-name "${VIC3_SHARE_FUNCTION:-vic3tech-share}" \
+    --zip-file "fileb://$tmp/share.zip" --region eu-central-1 --output text --query LastUpdateStatus >/dev/null ||
+  echo "warning: couldn't update the vic3tech-share Lambda's code" >&2
+
 echo "Deployed version ${version} to s3://${bucket}${1:+ ($1)}"

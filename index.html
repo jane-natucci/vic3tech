@@ -288,6 +288,11 @@
     .save-banner.err { color: var(--accent); }
     .save-banner .file { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .save-banner .back { margin-left: auto; flex: none; font: inherit; border: 1px solid var(--accent); background: var(--panel); color: var(--accent); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+    .save-banner .share { flex: none; font: inherit; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+    .save-banner .share + .back { margin-left: 8px; }
+    .save-banner .share:disabled { opacity: 0.6; cursor: default; }
+    .save-banner .link { flex: 0 1 340px; min-width: 120px; font: inherit; font-size: 0.95em; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 3px 8px; margin-left: auto; }
+    .save-banner .link + .share, .save-banner .file + .share { margin-left: auto; }
     .save-banner .bar { width: 160px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; flex: none; }
     .save-banner .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
     #dropHint { position: fixed; inset: 12px; z-index: 50; display: none; align-items: center; justify-content: center; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-family: Georgia, serif; font-size: 1.6em; color: var(--accent); pointer-events: none; text-align: center; }
@@ -603,6 +608,7 @@
       layoutTrees();
       if (view) { showView(view); } else { renderSidebar(); render(); }
       if (techId && state.techs[techId]) requestAnimationFrame(() => scrollToTech(techId));
+      openSharedFromUrl();
     });
 
     // --- Tree layout -------------------------------------------------------
@@ -1292,7 +1298,7 @@
       worker.postMessage(file);
     }
 
-    async function applySave(sum, fileName) {
+    async function applySave(sum, fileName, sharedId = null) {
       const econ = await loadEconomy();
       state.base ??= { countries: state.data.countries, econCountries: econ.countries, resourceIds: econ.resourceIds, pinned: state.pinned };
       const units = Object.fromEntries(state.data.units.map(u => [u.id, u]));
@@ -1326,15 +1332,61 @@
       useCountries(countries);
       state.saveInfo = { date: sum.date, player: sum.player, fileName };
       state.saveTrade = { treaties: sum.treaties || [], prices: sum.prices || [] };
+      state.saveSummary = sum; state.sharedId = sharedId;
       const [y, mo, d] = sum.date.split(".").map(Number);
       // Just the date: the save strip under the header already says "Your save".
       document.getElementById("eraLabel").textContent = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-      if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
+      // A shared link keeps the country it was shared with (#TAG); otherwise pin the player.
+      const linked = sharedId ? parseHash().tag : null;
+      if (linked && state.byTag[linked]) state.pinned = linked;
+      else if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
       else if (!state.byTag[state.pinned]) state.pinned = countries[0]?.tag;
-      const you = sum.player ? state.byTag[sum.player]?.name || sum.player : null;
-      setSaveStatus(`<b>Your save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <span class="file">${esc(fileName)}</span> <button class="back" id="back1836">Back to 1836</button>`);
+      renderSaveBanner();
       state.preview = null;
       renderSidebar(); render();
+    }
+
+    function renderSaveBanner(extra = "") {
+      const sum = state.saveSummary, you = sum?.player ? state.byTag[sum.player]?.name || sum.player : null;
+      setSaveStatus(state.sharedId
+        ? `<b>Shared save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <button class="back" id="back1836">Back to 1836</button>`
+        : `<b>Your save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <span class="file">${esc(state.saveInfo?.fileName || "")}</span>${extra || `<button class="share" id="shareSave" title="Upload this save's summary and copy a link anyone can open">Share this save</button>`}<button class="back" id="back1836">Back to 1836</button>`);
+    }
+
+    // --- Sharing a loaded save --------------------------------------------------
+    // POSTs the gzipped summary to /api/share (CloudFront -> the vic3tech-share
+    // Lambda, lambda/share.mjs), which stores it as /shares/<id>.json.gz. The
+    // link carries the id in ?s= (the #hash keeps tracking country/tab).
+    async function shareSave() {
+      const btn = document.getElementById("shareSave");
+      if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
+      try {
+        const gz = await new Response(new Blob([JSON.stringify(state.saveSummary)]).stream().pipeThrough(new CompressionStream("gzip"))).blob();
+        const res = await fetch("/api/share", { method: "POST", headers: { "content-type": "application/octet-stream" }, body: gz });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+        const { id } = await res.json();
+        const url = `${location.origin}/?s=${id}#${state.pinned}`;
+        let copied = false;
+        try { await navigator.clipboard.writeText(url); copied = true; } catch {}
+        renderSaveBanner(`<input class="link" readonly value="${esc(url)}" onclick="this.select()"><button class="share" disabled>${copied ? "Link copied!" : "Copy the link"}</button>`);
+      } catch (e) {
+        renderSaveBanner(`<span style="margin-left:auto;color:var(--accent)">Couldn't share: ${esc(e.message)}</span><button class="share" id="shareSave">Try again</button>`);
+      }
+    }
+
+    // Opening a shared link: ?s=<12-character id>.
+    async function openSharedFromUrl() {
+      const id = new URLSearchParams(location.search).get("s");
+      if (!id) return;
+      if (!/^[A-Za-z0-9_-]{12}$/.test(id)) { setSaveStatus("This shared link isn't valid.", true); return; }
+      setSaveStatus("Loading the shared save…");
+      try {
+        const res = await fetch(`/shares/${id}.json.gz`);
+        if (!res.ok) throw new Error(res.status === 403 || res.status === 404 ? "it doesn't exist (anymore)" : `HTTP ${res.status}`);
+        await applySave(await res.json(), null, id);
+      } catch (e) {
+        setSaveStatus(`Couldn't open this shared save: ${esc(e.message)}.`, true);
+      }
     }
 
     function useCountries(countries) {
@@ -1347,7 +1399,8 @@
       const b = state.base; if (!b) return;
       useCountries(b.countries);
       economy.countries = b.econCountries; economy.resourceIds = b.resourceIds;
-      state.saveInfo = null; state.saveTrade = null; state.base = null; state.preview = null;
+      state.saveInfo = null; state.saveTrade = null; state.saveSummary = null; state.sharedId = null; state.base = null; state.preview = null;
+      if (location.search) history.replaceState(null, "", location.pathname + location.hash);
       if (!state.byTag[state.pinned]) state.pinned = b.pinned;
       document.getElementById("eraLabel").textContent = "1836 start";
       setSaveStatus("");
@@ -1370,6 +1423,7 @@
     document.getElementById("saveFile").addEventListener("change", e => { loadSaveFile(e.target.files[0]); e.target.value = ""; });
     saveStatus.addEventListener("click", e => {
       if (e.target.id === "back1836") backTo1836();
+      if (e.target.id === "shareSave") shareSave();
       if (e.target.closest("[data-open-save-help]")) { e.preventDefault(); saveDialog.showModal(); }
     });
     // Dropping a file anywhere on the page loads it.
