@@ -39,7 +39,13 @@ fi
 
 version="$(cat "$data" $tracked | md5)"
 version="${version:0:10}"
-sed "s/__DATA_VERSION__/${version}/g" index.html > "$tmp/index.html"
+# The header's "Build <sha>" link points at the deployed commit on GitHub.
+# A local deploy with uncommitted changes to the page or our files says so.
+sha="$(git rev-parse HEAD)"
+label="${sha:0:7}"
+[ -z "$(git status --porcelain -- index.html $tracked)" ] || label="${label}-dirty"
+sed -e "s/__DATA_VERSION__/${version}/g" -e "s/__BUILD_SHA__/${sha}/g" -e "s/__BUILD_LABEL__/${label}/g" \
+  index.html > "$tmp/index.html"
 
 # Assets first, page last, so a new page never points at files not yet there.
 if [ "${1:-}" = "--code-only" ]; then

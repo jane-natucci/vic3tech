@@ -89,6 +89,9 @@
     }
     header h1 { font-size: 1.35em; letter-spacing: -0.01em; }
     header h1 small { color: var(--muted); font-size: 0.7em; margin-left: 6px; }
+    /* Which commit is deployed, like Achievement Chains' top bar. */
+    .build { font-size: 0.72em; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .build:hover { color: var(--accent); border-color: var(--accent); }
     .tabs { display: flex; gap: 4px; }
     .tabs button {
       font: inherit; font-size: 0.9em;
@@ -328,6 +331,8 @@
 <body>
   <header>
     <h1>Victoria 3 <small>1836 start</small></h1>
+    <!-- deploy.sh fills in the commit; a local preview has no build to show. -->
+    <a class="build" id="buildLink" href="https://github.com/jane-natucci/vic3tech/commit/__BUILD_SHA__" target="_blank" rel="noopener" title="View the deployed source commit on GitHub">Build __BUILD_LABEL__</a>
     <div class="tabs" id="tabs">
       <button data-view="techView" class="on">Technology</button>
       <button data-view="armyView">Armies<span class="long"> &amp; navies</span></button>
@@ -403,6 +408,7 @@
       PER: "IR", EGY: "EG", MOR: "MA", PAN: "IN"
     };
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
+    if (document.getElementById("buildLink").href.includes("__BUILD_SHA__")) document.getElementById("buildLink").remove();
     const asset = path => `/vic3/${path}?v=__DATA_VERSION__`;
     const flag = tag => ISO[tag] ? String.fromCodePoint(...[...ISO[tag]].map(c => 0x1F1A5 + c.charCodeAt(0))) : null;
     const flagHtml = (c, cls = "flag") => flag(c.tag) ? `<span class="${cls}" title="${c.name}">${flag(c.tag)}</span>` : `<span class="${cls} none" title="${c.name}">${c.tag}</span>`;
