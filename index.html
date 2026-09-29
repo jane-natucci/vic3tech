@@ -82,7 +82,7 @@
 
     header {
       grid-column: 1 / -1;
-      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap;
       padding: 14px 20px;
       border-bottom: 1px solid var(--line);
       background: var(--panel);
@@ -99,7 +99,11 @@
       padding: 6px 14px; border-radius: 999px; cursor: pointer;
     }
     .tabs button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-    .current { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 0.95em; }
+    /* Takes whatever room is left on the header row and wraps its own text,
+       rather than the whole block dropping to a new row when the stats line
+       grows (a loaded save adds prestige and GDP). */
+    .current { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.95em; flex: 1 1 260px; min-width: 0; }
+    .current > div { min-width: 0; }
     .current .flag { font-size: 1.6em; }
     .current b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
     .pill { font-size: 0.72em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
@@ -274,11 +278,16 @@
     /* Loading a save */
     .save-ctl { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }
     .save-ctl button { font: inherit; border: 1px dashed var(--accent); background: transparent; color: var(--accent); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
-    .save-ctl button.back { border-style: solid; }
-    .save-ctl .status { color: var(--muted); max-width: 360px; }
-    .save-ctl .status.err { color: var(--accent); }
-    .save-ctl .bar { width: 120px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
-    .save-ctl .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+    /* Save status gets its own full-width strip under the header row (the
+       last flex item, wrapped onto its own line), so loading a save never
+       reshuffles the tabs and country. Empty = hidden. */
+    .save-banner { order: 10; flex: 1 0 100%; display: flex; align-items: center; gap: 12px; margin: 2px -20px -14px; padding: 7px 20px; border-top: 1px solid var(--line); background: var(--accent-soft); font-size: 0.85em; color: var(--ink); }
+    .save-banner:empty { display: none; }
+    .save-banner.err { color: var(--accent); }
+    .save-banner .file { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .save-banner .back { margin-left: auto; flex: none; font: inherit; border: 1px solid var(--accent); background: var(--panel); color: var(--accent); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+    .save-banner .bar { width: 160px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; flex: none; }
+    .save-banner .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
     #dropHint { position: fixed; inset: 12px; z-index: 50; display: none; align-items: center; justify-content: center; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-family: Georgia, serif; font-size: 1.6em; color: var(--accent); pointer-events: none; text-align: center; }
     body.dragging #dropHint { display: flex; }
 
@@ -312,6 +321,7 @@
       body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: 100dvh; }
       header, main { min-width: 0; }
       header { padding: 10px 12px 8px; gap: 8px; }
+      .save-banner { margin: 0 -12px -8px; padding: 7px 12px; }
       header h1 { font-size: 1.15em; }
       .tabs { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
       .tabs::-webkit-scrollbar { display: none; }
@@ -377,9 +387,9 @@
     <div class="save-ctl" id="saveCtl">
       <button id="loadSave" title="See your own campaign in every tab">Load your save…</button>
       <input type="file" id="saveFile" accept=".v3" hidden>
-      <span class="status" id="saveStatus"></span>
     </div>
     <div class="current" id="current"></div>
+    <div class="save-banner" id="saveStatus" role="status"></div>
   </header>
   <dialog id="saveDialog" aria-labelledby="saveDialogTitle">
     <button type="button" class="close" data-close-dialog aria-label="Close">✕</button>
@@ -1118,7 +1128,8 @@
       document.getElementById("eraLabel").textContent = `your save · ${when}`;
       if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
       else if (!state.byTag[state.pinned]) state.pinned = countries[0]?.tag;
-      setSaveStatus(`Showing <b>${esc(fileName)}</b>${sum.player ? ` (you: ${esc(state.byTag[sum.player]?.name || sum.player)})` : ""} <button class="back" id="back1836">Back to 1836</button>`);
+      const you = sum.player ? state.byTag[sum.player]?.name || sum.player : null;
+      setSaveStatus(`<b>Your save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <span class="file">${esc(fileName)}</span> <button class="back" id="back1836">Back to 1836</button>`);
       state.preview = null;
       renderSidebar(); render();
     }
