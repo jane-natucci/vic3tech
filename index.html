@@ -271,6 +271,17 @@
     .detail details ul { padding: 2px 0 6px 12px; }
     .muted { color: var(--muted); }
 
+    /* Loading a save */
+    .save-ctl { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }
+    .save-ctl button { font: inherit; border: 1px dashed var(--accent); background: transparent; color: var(--accent); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+    .save-ctl button.back { border-style: solid; }
+    .save-ctl .status { color: var(--muted); max-width: 360px; }
+    .save-ctl .status.err { color: var(--accent); }
+    .save-ctl .bar { width: 120px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+    .save-ctl .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+    #dropHint { position: fixed; inset: 12px; z-index: 50; display: none; align-items: center; justify-content: center; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-family: Georgia, serif; font-size: 1.6em; color: var(--accent); pointer-events: none; text-align: center; }
+    body.dragging #dropHint { display: flex; }
+
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
 
@@ -291,6 +302,7 @@
       .tabs::-webkit-scrollbar { display: none; }
       .tabs button { flex: none; white-space: nowrap; font-size: 0.85em; padding: 6px 12px; }
       .tabs .long { display: none; } /* "Armies & navies" -> "Armies" so all four tabs fit */
+      .save-ctl { display: none; } /* loading a 300+ MB save is a desktop thing */
       .current { order: 2; flex: 1 0 100%; margin-left: 0; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-size: 0.9em; }
       .current > div { min-width: 0; flex: 1; }
       .current::after { content: "Change ▾"; flex: none; font-size: 0.8em; color: var(--accent); }
@@ -338,7 +350,7 @@
 </head>
 <body>
   <header>
-    <h1>Victoria 3 <small>1836 start</small></h1>
+    <h1>Victoria 3 <small id="eraLabel">1836 start</small></h1>
     <!-- deploy.sh fills in the commit; a local preview has no build to show. -->
     <a class="build" id="buildLink" href="https://github.com/jane-natucci/vic3tech/commit/__BUILD_SHA__" target="_blank" rel="noopener" title="View the deployed source commit on GitHub">Build __BUILD_LABEL__</a>
     <div class="tabs" id="tabs">
@@ -347,8 +359,14 @@
       <button data-view="unitView">Units<span class="long"> &amp; mobilization</span></button>
       <button data-view="economyView">Economy</button>
     </div>
+    <div class="save-ctl" id="saveCtl">
+      <button id="loadSave" title="Melt your save on pdx.tools first, then load the melted .v3 file here. It's read in your browser; nothing is uploaded.">Load a melted save…</button>
+      <input type="file" id="saveFile" accept=".v3" hidden>
+      <span class="status" id="saveStatus"></span>
+    </div>
     <div class="current" id="current"></div>
   </header>
+  <div id="dropHint">Drop a melted Victoria 3 save<br><small style="font-size:0.55em">read in your browser, nothing is uploaded</small></div>
 
   <aside>
     <div class="picker-head"><b>Choose a country</b><button type="button" id="pickerDone">Done</button></div>
@@ -413,7 +431,14 @@
       LUB: "DE", MEC: "DE", NAS: "DE", OLD: "DE", SAX: "DE", SCH: "DE", WLD: "DE", WUR: "DE",
       USA: "US", MEX: "MX", TEX: "US", BRZ: "BR", ARG: "AR", CHL: "CL", BOL: "BO", CLM: "CO", VNZ: "VE",
       NPU: "PE", SPU: "PE", HAI: "HT", HAW: "US", CHI: "CN", JAP: "JP", KOR: "KR", SIA: "TH", BUR: "MM",
-      PER: "IR", EGY: "EG", MOR: "MA", PAN: "IN"
+      PER: "IR", EGY: "EG", MOR: "MA", PAN: "IN",
+      // Formed or released mid-game -- only show up in a loaded save.
+      GER: "DE", ITA: "IT", POL: "PL", BUL: "BG", ROM: "RO", IRE: "IE", CZH: "CZ", BOH: "CZ", UKR: "UA",
+      LIT: "LT", LAT: "LV", EST: "EE", ALB: "AL", ICL: "IS", YUG: "RS", SLV: "SK", SLO: "SI", BYE: "BY",
+      GEO: "GE", ARM: "AM", AZB: "AZ", CAN: "CA", AST: "AU", NZL: "NZ", SAF: "ZA", IDN: "ID", PHI: "PH",
+      ISR: "IL", IRQ: "IQ", SYR: "SY", LEB: "LB", ARA: "SA", AFG: "AF", PAK: "PK", MGL: "MN", CUB: "CU",
+      PNM: "PA", ECU: "EC", URU: "UY", PRG: "PY", PEU: "PE", ETH: "ET", LBY: "LY", ALD: "DZ", LIB: "LR",
+      MAD: "MG", ION: "GR", CAT: "ES"
     };
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
     // Split so deploy.sh's substitution can't rewrite this check too.
@@ -434,6 +459,9 @@
     const isEurope = c => c.region === "europe";
     const battalions = c => Object.values(c.army).reduce((n, u) => n + u.count, 0);
     const ships = c => Object.values(c.navy).reduce((n, s) => n + s.count, 0);
+    // In a loaded save, battalions can be understaffed: use their real manpower.
+    const menOf = c => c.men ?? battalions(c) * 1000;
+    const hasWord = () => state.saveInfo ? "has" : "starts with";
     const catCount = (c, cat) => c.techs.filter(t => state.techs[t].category === cat).length;
 
     // Hash format: "#TAG" (country only, Technology tab), "#TAG/tech_id"
@@ -615,7 +643,7 @@
       const t = state.techs[state.focusTech];
       if (!t) { el.innerHTML = `<p class="empty">Hover over a technology to see what it does and which countries start with it.</p>`; return; }
       const c = current(); const st = techStatus(c, t);
-      const statusText = { has: `${c.name} starts with this`, av: `${c.name} can research this`, lk: `${c.name} is missing prerequisites` }[st];
+      const statusText = { has: `${c.name} ${hasWord()} this`, av: `${c.name} can research this`, lk: `${c.name} is missing prerequisites` }[st];
       const europe = state.data.countries.filter(isEurope).sort((a, b) => battalions(b) - battalions(a));
       const holders = europe.filter(x => x.techSet.has(t.id)), lacking = europe.filter(x => !x.techSet.has(t.id));
       const techLink = id => `<span class="link" data-goto="${id}">${esc(state.techs[id].name)}</span>`;
@@ -628,7 +656,7 @@
         ${t.unlocks.length ? `<h3>Unlocks</h3><ul>${t.unlocks.map(u => `<li><span>${esc(u.name)}</span><span class="k">${esc(u.kind)}</span></li>`).join("")}</ul>` : ""}
         ${researchHtml(c, t, st)}
         ${t.requires.length ? `<h3>Requires</h3><p>${t.requires.map(techLink).join(", ")}</p>` : ""}
-        <h3>European countries that start with it (${holders.length}/${europe.length})</h3>
+        <h3>European countries that ${state.saveInfo ? "have" : "start with"} it (${holders.length}/${europe.length})</h3>
         <div class="flags">${holders.map(x => flagHtml(x, "")).join("") || "<em>None</em>"}</div>
         ${lacking.length && holders.length ? `<h3>…and those that don't</h3><div class="flags">${lacking.map(x => flagHtml(x, "")).join("")}</div>` : ""}`;
     }
@@ -644,7 +672,7 @@
         return {
           ships: numeric("ships", ships),
           military: numeric("military techs", c => catCount(c, "military"), state.layout.military.techs.length),
-          men: numeric("men", c => battalions(c) * 1000)
+          men: numeric("men", menOf)
         }[state.armySort] || numeric("battalions", battalions);
       }
       if (viewOn("unitView")) {
@@ -686,7 +714,7 @@
       const c = current();
       const cats = state.data.categories.map(cat => `${catCount(c, cat)} ${cat}`).join(" · ");
       document.getElementById("current").innerHTML = `${flagHtml(c)}<div><b>${esc(c.name)}</b>
-        <div style="font-size:0.8em;color:var(--muted)">${cats} techs · ${battalions(c)} battalions · ${ships(c)} ships</div></div>
+        <div style="font-size:0.8em;color:var(--muted)">${cats} techs · ${battalions(c)} battalions · ${ships(c)} ships${c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : ""}${c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M GDP` : ""}</div></div>
         ${c.tier ? `<span class="pill" title="Which starting-tech package the game gives this country">Tech tier ${c.tier}</span>` : ""}
         ${state.preview && state.preview !== state.pinned ? `<span class="pill">preview</span>` : ""}`;
     }
@@ -704,7 +732,7 @@
         ["name", "Country"], ["battalions", "Battalions"], ["men", "Men"], ["bar", "Army composition"],
         ["ships", "Ships"], ["military", "Military techs"]
       ];
-      const val = (c, k) => ({ name: c.name, battalions: battalions(c), men: battalions(c), ships: ships(c), military: catCount(c, "military"), bar: battalions(c) })[k];
+      const val = (c, k) => ({ name: c.name, battalions: battalions(c), men: menOf(c), ships: ships(c), military: catCount(c, "military"), bar: battalions(c) })[k];
       const list = state.data.countries.filter(c => state.scope === "all" ? battalions(c) + ships(c) > 0 : isEurope(c))
         .sort((a, b) => { const x = val(a, state.armySort), y = val(b, state.armySort);
           return (typeof x === "string" ? x.localeCompare(y) : x - y) * (state.armyDesc ? -1 : 1); });
@@ -717,7 +745,7 @@
         list.map(c => `<tr data-tag="${c.tag}" class="${c.tag === state.pinned ? "pinned" : ""}">
           <td>${flagHtml(c, "")} ${esc(c.name)}</td>
           <td class="num">${battalions(c)}</td>
-          <td class="num">${(battalions(c) * 1000).toLocaleString("en")}</td>
+          <td class="num">${Math.round(menOf(c)).toLocaleString("en")}</td>
           <td class="bar" data-tip="army"><div class="stack" style="width:${battalions(c) / maxBat * 100}%">
             ${[...UNIT_GROUPS, ["other", "", "--other"]].map(([g, , v]) => { const n = groupCount(c, g); return n ? `<i style="flex:${n};background:var(${v})"></i>` : ""; }).join("")}
           </div></td>
@@ -774,7 +802,7 @@
         <div class="ubody"><b>${esc(item.name)}</b>
           <div class="ustatus">${status}</div>
           <div class="ubadges">
-            ${fielded ? `<span class="pill">${esc(c.name)} starts with ${fielded}</span>` : ""}
+            ${fielded ? `<span class="pill">${esc(c.name)} ${hasWord()} ${fielded}</span>` : ""}
             ${obsolete ? `<span class="pill">Obsolete</span>` : ""}
             ${kind === "ships" && item.obsolete_with.length ? `<span class="pill" style="background:none;border:1px solid var(--line);color:var(--muted)">Obsolete with ${esc(item.obsolete_with.map(id => state.techs[id]?.name || id).join(", "))}</span>` : ""}
           </div>
@@ -814,12 +842,19 @@
     const SECTORS = [["industry", "Industry", "--art"], ["agriculture", "Agriculture", "--inf"], ["extraction", "Extraction", "--cav"],
                      ["infrastructure", "Infrastructure", "--sotl"], ["government", "Government", "--gov"], ["urban", "Urban", "--other"]];
     state.econKind = "buildings"; state.econSort = "total"; state.econDesc = true;
-    let economy = null, economyLoading = false;
+    let economy = null, economyPromise = null;
     function loadEconomy() {
-      if (economy || economyLoading) return;
-      economyLoading = true;
-      fetch(asset("economy.json")).then(r => r.json()).then(e => {
+      if (economyPromise) return economyPromise;
+      return economyPromise = fetch(asset("economy.json")).then(r => r.json()).then(e => {
         economy = e;
+        aggregateEconomy(e);
+        renderSidebar(); render();
+        return e;
+      });
+    }
+    // Per-country totals (levels, sectors, resources) from its states, and
+    // the resource columns. Also run on a loaded save's states.
+    function aggregateEconomy(e) {
         for (const c of Object.values(e.countries)) {
           c.levels = {}; c.sectors = {}; c.resources = {};
           for (const st of c.states) {
@@ -831,7 +866,8 @@
               const r = c.resources[id] ??= { amount: 0, undiscovered: 0 };
               r.amount += n * st.share; r.undiscovered += undiscovered * st.share;
             };
-            add("arable_land", st.arable_land);
+            if (st.arable_owned != null) { const r = c.resources.arable_land ??= { amount: 0, undiscovered: 0 }; r.amount += st.arable_owned; }
+            else add("arable_land", st.arable_land);
             for (const [id, n] of Object.entries(st.capped)) add(id, n);
             for (const [id, d] of Object.entries(st.discoverable)) add(id, d.discovered, d.undiscovered);
           }
@@ -841,8 +877,6 @@
         const world = {};
         for (const c of Object.values(e.countries)) for (const [id, r] of Object.entries(c.resources)) world[id] = (world[id] || 0) + r.amount + r.undiscovered;
         e.resourceIds = Object.keys(world).filter(id => id !== "arable_land").sort((a, b) => world[b] - world[a]);
-        renderSidebar(); render();
-      });
     }
     const econOf = c => economy?.countries[c.tag] || { levels: {}, sectors: {}, resources: {}, states: [], total: 0 };
     const bIcon = id => economy.buildings[id]?.icon ? `<img class="ico" src="${asset(economy.buildings[id].icon)}" alt="">` : "";
@@ -853,22 +887,28 @@
     function renderEconomy() {
       if (!economy) { loadEconomy(); document.getElementById("econTable").innerHTML = `<tr><td class="muted">Loading…</td></tr>`; return; }
       const kind = state.econKind;
-      document.getElementById("econTabs").innerHTML = [["buildings", "Buildings in 1836"], ["resources", "Resources"]].map(([k, label]) =>
+      document.getElementById("econTabs").innerHTML = [["buildings", state.saveInfo ? "Buildings" : "Buildings in 1836"], ["resources", "Resources"]].map(([k, label]) =>
         `<button data-econ="${k}" class="${k === kind ? "on" : ""}">${label}</button>`).join("") +
         (kind === "buildings" ? `<div class="legend">${SECTORS.map(([, label, v]) => `<span><span class="sw" style="background:var(${v})"></span>${label}</span>`).join("")}</div>` : "");
       document.getElementById("econNote").innerHTML = kind === "buildings"
-        ? "Building levels each country starts with, by sector. Hover over (or tap) a bar for the building types. Military buildings are left out (starting barracks come from the army setup; see the Armies tab)."
+        ? (state.saveInfo
+          ? "Building levels each country has in your save, by sector. Hover over (or tap) a bar for the building types. Military buildings and subsistence farms are left out."
+          : "Building levels each country starts with, by sector. Hover over (or tap) a bar for the building types. Military buildings are left out (starting barracks come from the army setup; see the Armies tab).")
+        : state.saveInfo
+        ? "How much of each resource a country's states can ever support, from your save: arable land is the game's own figure; resource caps are split by the provinces each country actually owns. <i>+N</i> is how much was undiscovered in 1836 (the save doesn't say what's been found since)."
         : "How much of each resource a country's states can ever support: arable land, and the maximum levels of each mine, forestry, fishery and so on. <i>+N</i> is undiscovered (gold, oil, rubber). States split between countries are credited by their share of provinces, which the game does slightly differently, so countries owning part of a state can be off by a few percent (Prussia shows 681 arable land here, 691 in game; countries whose states are all whole match exactly).";
 
       const list = state.data.countries.filter(c => economy.countries[c.tag] && (state.scope === "all" ? true : isEurope(c)));
       let cols, val, cells;
       if (kind === "buildings") {
-        cols = [["name", "Country"], ["total", "Levels"], ["bar", "By sector"], ...SECTORS.filter(([s]) => s !== "urban").map(([s, l]) => [s, l])];
+        // Urban (services, owner buildings) is tiny in 1836 but the biggest sector by the 1900s.
+        const shown = SECTORS.filter(([s]) => s !== "urban" || list.some(c => (econOf(c).sectors.urban || 0) >= 10));
+        cols = [["name", "Country"], ["total", "Levels"], ["bar", "By sector"], ...shown.map(([s, l]) => [s, l])];
         val = (c, k) => k === "name" ? c.name : k === "total" || k === "bar" ? econOf(c).total : econOf(c).sectors[k] || 0;
         const max = Math.max(1, ...list.map(c => econOf(c).total));
         cells = c => { const e = econOf(c); return `<td class="num">${e.total}</td>
           <td class="bar" data-tip="econ"><div class="stack" style="width:${e.total / max * 100}%">${SECTORS.map(([s, , v]) => e.sectors[s] ? `<i style="flex:${e.sectors[s]};background:var(${v})"></i>` : "").join("")}</div></td>
-          ${SECTORS.filter(([s]) => s !== "urban").map(([s]) => `<td class="num">${e.sectors[s] || "–"}</td>`).join("")}`; };
+          ${shown.map(([s]) => `<td class="num">${e.sectors[s] || "–"}</td>`).join("")}`; };
       } else {
         const ids = ["arable_land", ...economy.resourceIds];
         cols = [["name", "Country"], ...ids.map(id => [id, `${id === "arable_land" ? "" : bIcon(id)}${esc(resName(id).replace(/ (Mines|Camps|Rigs|Plantations|Wharves|Stations)$/, ""))}`])];
@@ -980,6 +1020,100 @@
       if (viewOn("unitView")) renderUnits();
       if (viewOn("economyView")) renderEconomy();
     }
+
+    // --- Loading a melted save -------------------------------------------------
+    // public/vic3/save-worker.js reads the file in a Web Worker and returns a
+    // per-country summary; here it replaces the 1836 countries (and economy
+    // countries) so every tab shows the save instead. "Back to 1836" restores
+    // them. Nothing leaves the browser.
+    const saveStatus = document.getElementById("saveStatus");
+    function setSaveStatus(html, err = false) { saveStatus.innerHTML = html; saveStatus.classList.toggle("err", err); }
+    function loadSaveFile(file) {
+      if (!file) return;
+      setSaveStatus(`Reading ${esc(file.name)}… <span class="bar"><i id="saveBar"></i></span>`);
+      const worker = new Worker(asset("save-worker.js"));
+      worker.onmessage = async ({ data: m }) => {
+        if (m.type === "progress") { const bar = document.getElementById("saveBar"); if (bar) bar.style.width = Math.round(m.done * 100) + "%"; return; }
+        worker.terminate();
+        if (m.type === "error") { setSaveStatus(esc(m.message), true); return; }
+        await applySave(m.summary, file.name);
+      };
+      worker.onerror = e => { worker.terminate(); setSaveStatus("Couldn't read that file: " + esc(e.message || "unknown error"), true); };
+      worker.postMessage(file);
+    }
+
+    async function applySave(sum, fileName) {
+      const econ = await loadEconomy();
+      state.base ??= { countries: state.data.countries, econCountries: econ.countries, resourceIds: econ.resourceIds, pinned: state.pinned };
+      const units = Object.fromEntries(state.data.units.map(u => [u.id, u]));
+      const shipTypes = Object.fromEntries(state.data.ships.map(s => [s.id, s]));
+      const countries = [], econCountries = {};
+      for (const sc of sum.countries) {
+        const army = {}, navy = {};
+        for (const [id, a] of Object.entries(sc.army)) army[id] = { name: units[id]?.name || id, group: units[id]?.group, count: a.count, manpower: a.manpower };
+        for (const [id, n] of Object.entries(sc.navy)) navy[id] = { name: shipTypes[id]?.name || id, count: n };
+        const techs = sc.techs.filter(t => state.techs[t]);
+        countries.push({
+          // Countries created mid-game (tags like D09) have no name in the files;
+          // the game names them from their capital, so do the same.
+          tag: sc.tag, name: state.data.country_names?.[sc.tag] || econ.regions[sc.capitalRegion]?.name || sc.tag, tier: null,
+          region: state.data.state_regions?.[sc.capitalRegion] || null,
+          techs, techSet: new Set(techs), army, navy, prestige: sc.prestige, gdp: sc.gdp,
+          men: Object.values(sc.army).reduce((n, a) => n + a.manpower, 0),
+        });
+        econCountries[sc.tag] = { states: sc.states.map(st => {
+          const r = econ.regions[st.region] || { name: st.region, provinces: 0, arable_land: 0, arable: [], capped: {}, discoverable: {} };
+          return {
+            id: st.region, name: r.name, share: r.provinces ? Math.min(1, st.provinces / r.provinces) : 1,
+            arable_land: r.arable_land, arable_owned: st.arable_land, arable: r.arable, capped: r.capped, discoverable: r.discoverable,
+            buildings: Object.fromEntries(Object.entries(st.buildings).filter(([id]) => econ.buildings[id])),
+          };
+        }) };
+      }
+      econ.countries = econCountries;
+      aggregateEconomy(econ);
+      useCountries(countries);
+      state.saveInfo = { date: sum.date, player: sum.player, fileName };
+      const [y, mo, d] = sum.date.split(".").map(Number);
+      const when = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+      document.getElementById("eraLabel").textContent = `your save · ${when}`;
+      if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
+      else if (!state.byTag[state.pinned]) state.pinned = countries[0]?.tag;
+      setSaveStatus(`Showing <b>${esc(fileName)}</b>${sum.player ? ` (you: ${esc(state.byTag[sum.player]?.name || sum.player)})` : ""} <button class="back" id="back1836">Back to 1836</button>`);
+      state.preview = null;
+      renderSidebar(); render();
+    }
+
+    function useCountries(countries) {
+      state.data.countries = countries;
+      state.byTag = {};
+      countries.forEach(c => { c.techSet ??= new Set(c.techs); state.byTag[c.tag] = c; });
+    }
+
+    function backTo1836() {
+      const b = state.base; if (!b) return;
+      useCountries(b.countries);
+      economy.countries = b.econCountries; economy.resourceIds = b.resourceIds;
+      state.saveInfo = null; state.base = null; state.preview = null;
+      if (!state.byTag[state.pinned]) state.pinned = b.pinned;
+      document.getElementById("eraLabel").textContent = "1836 start";
+      setSaveStatus("");
+      renderSidebar(); render();
+    }
+
+    document.getElementById("loadSave").addEventListener("click", () => document.getElementById("saveFile").click());
+    document.getElementById("saveFile").addEventListener("change", e => { loadSaveFile(e.target.files[0]); e.target.value = ""; });
+    saveStatus.addEventListener("click", e => { if (e.target.id === "back1836") backTo1836(); });
+    // Dropping a file anywhere on the page loads it.
+    let dragDepth = 0;
+    addEventListener("dragenter", e => { if (e.dataTransfer?.types.includes("Files")) { dragDepth++; document.body.classList.add("dragging"); } });
+    addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+    addEventListener("dragover", e => { if (e.dataTransfer?.types.includes("Files")) e.preventDefault(); });
+    addEventListener("drop", e => {
+      if (!e.dataTransfer?.files.length) return;
+      e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+      loadSaveFile(e.dataTransfer.files[0]);
+    });
 
     // --- Events --------------------------------------------------------------
     // Phones: no hover. iOS Safari also swallows a tap whose simulated

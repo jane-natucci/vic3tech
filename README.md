@@ -12,6 +12,10 @@ Everything is read straight from the game's own files, not transcribed by hand.
 
 The generated files come from Paradox's game data, so they're **not in this repo**. Run the extractor against your own install to get them.
 
+## Loading a save (prototype, `save-loading` branch)
+
+Drop a *melted* save onto the page (or use "Load a melted save…") and every tab shows that campaign instead of 1836. Vic3 saves are binary by default; melt them first on [pdx.tools](https://pdx.tools) (open the save, then "Melt"). `vic3/save-worker.js` reads the file in your browser (a 361 MB save takes about 2 seconds), so nothing is uploaded.
+
 ## Running it locally
 
 ```bash

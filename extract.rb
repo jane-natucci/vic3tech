@@ -96,6 +96,12 @@ class Vic3Extractor
       eras: techs.values.map { |t| t[:era] }.uniq.sort,
       categories: CATEGORIES,
       research: research_rules,
+      # For loaded saves: every tag's name (Germany, formed later, isn't one
+      # of the 1836 countries) and every state's region.
+      # Placeholder tags for countries created in play (D01, D09, ...) have no
+      # name; the page names those after their capital instead.
+      country_names: country_definitions.keys.filter_map { |tag| (name = text(tag)) && [tag, name] }.to_h,
+      state_regions: state_region,
       techs: techs.values.map { |t| t.except(:texture).merge(icon: icons[t[:id]]) },
       units: units,
       ships: ships,
@@ -246,16 +252,6 @@ class Vic3Extractor
   # left every country without a starting army -- Switzerland, most of the
   # world -- with no region at all, so the page never listed them.)
   def country_regions
-    state_region = Dir[@game.join("map_data/state_regions/*.txt")].each_with_object({}) do |f, h|
-      region = MAP_REGIONS[File.basename(f, ".txt").sub(/\A\d+_/, "")] or next
-      read(f).each { |id, _, _| h[id] = region }
-    end
-    # The "russia" map file also holds Central Asia and Siberia, so Europe is
-    # whatever the game's own European strategic regions cover (which do
-    # include European Russia and the Caucasus).
-    read(@game.join("common/strategic_regions/europe_strategic_regions.txt")).each do |_, _, body|
-      Vic3Script.list(Vic3Script.value(body, "states")).each { |id| state_region[id] = "europe" } if body.is_a?(Array)
-    end
     provinces = Hash.new { |h, tag| h[tag] = Hash.new(0) }
     read(@game.join("common/history/states/00_states.txt")).each do |_, _, top|
       next unless top.is_a?(Array)
@@ -267,9 +263,29 @@ class Vic3Extractor
         end
       end
     end
-    capitals = files("country_definitions").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }
-                                           .to_h { |tag, _, body| [tag, state_region[Vic3Script.value(body, "capital")]] }
+    capitals = country_definitions.transform_values { |body| state_region[Vic3Script.value(body, "capital")] }
     provinces.to_h { |tag, by_region| [tag, capitals[tag] || by_region.max_by(&:last).first] }
+  end
+
+  # STATE_X -> page region. The "russia" map file also holds Central Asia and
+  # Siberia, so Europe is whatever the game's own European strategic regions
+  # cover (which do include European Russia and the Caucasus). Also shipped
+  # in data.json, so a loaded save can place countries by their capital.
+  def state_region
+    @state_region ||= begin
+      regions = Dir[@game.join("map_data/state_regions/*.txt")].each_with_object({}) do |f, h|
+        region = MAP_REGIONS[File.basename(f, ".txt").sub(/\A\d+_/, "")] or next
+        read(f).each { |id, _, _| h[id] = region }
+      end
+      read(@game.join("common/strategic_regions/europe_strategic_regions.txt")).each do |_, _, body|
+        Vic3Script.list(Vic3Script.value(body, "states")).each { |id| regions[id] = "europe" } if body.is_a?(Array)
+      end
+      regions
+    end
+  end
+
+  def country_definitions
+    @country_definitions ||= files("country_definitions").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }.to_h { |tag, _, body| [tag, body] }
   end
 
   def add_armies(countries)
@@ -480,13 +496,15 @@ class Vic3Extractor
       end
     end
 
-    used = countries.values.flat_map { |c| c[:states].flat_map { |s| s[:buildings].keys + s[:capped].keys + s[:arable] + s[:discoverable].keys } }.uniq
-    # Military buildings are left out: most starting barracks come from the
-    # army formations rather than these files (Prussia would show 2 levels
-    # for 128 battalions), and the Armies tab covers the military anyway.
+    # Every building type, not just the ones standing in 1836 -- a loaded
+    # save has power plants, motor industries and so on. Left out: military
+    # buildings (most starting barracks come from the army formations rather
+    # than these files -- Prussia would show 2 levels for 128 battalions --
+    # and the Armies tab covers the military anyway) and subsistence farms
+    # (every rural state has them; they'd swamp agriculture in a save).
     # Monuments sit in a group with no parent; they count as government.
-    buildings = used.filter_map do |id|
-      d = building_defs[id] or next
+    buildings = building_defs.filter_map do |id, d|
+      next if d[:group].to_s.include?("subsistence")
       sector = sector_of.(d[:group]) || "government"
       next if sector == "military"
       [id, { name: text(id) || humanize(id), group: d[:group], group_name: text(d[:group]) || humanize(d[:group].to_s),
@@ -494,7 +512,13 @@ class Vic3Extractor
     end.to_h
     countries.each_value { |c| c[:states].each { |st| st[:buildings].select! { |id, _| buildings.key?(id) } } }
 
-    { buildings: buildings, countries: countries.sort.to_h }
+    # Every state region, for loaded saves: they say which country owns which
+    # provinces of a region, so its resources can be split exactly.
+    region_info = regions.to_h do |id, r|
+      [id, { name: text(id) || humanize(id.delete_prefix("STATE_")), **r.slice(:provinces, :arable_land, :arable, :capped, :discoverable) }]
+    end
+
+    { buildings: buildings, regions: region_info, countries: countries.sort.to_h }
   end
 
   # principle_military_industry_3 -> "Militarized Industry (level 3)"

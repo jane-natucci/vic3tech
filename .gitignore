@@ -3,4 +3,5 @@
 /vic3/*
 !/vic3/favicon.svg
 !/vic3/og-image.jpg
+!/vic3/save-worker.js
 .DS_Store
