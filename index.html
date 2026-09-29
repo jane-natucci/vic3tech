@@ -1139,7 +1139,7 @@
 
       ctl.innerHTML = "";
       note.innerHTML = save
-        ? "Current world market price of every traded good, how far it is from its base price (the game caps prices at −75% and +75%), and the last ~4 years of history. At +75% there's far more demand than supply."
+        ? "Current world market price of every traded good, how far it is from its base price (the game caps prices at −75% and +75%), and the last ~4 years of history. It's one world price per good, the same for every country (the save doesn't keep each market's local prices). At +75%, demand far outweighs supply, or nobody produces the good yet (e.g. aeroplanes in 1841)."
         : "Base price of every traded good. Real prices only exist once a game runs — load a save to see current world market prices and their history.";
       const goods = state.data.goods.filter(g => g.market_index != null);
       body.innerHTML = `<table class="prices"><tr><th>Good</th><th class="num">Base</th>${save ? `<th class="num">Now</th><th>vs base</th><th>Last ~4 years</th>` : ""}</tr>` +
