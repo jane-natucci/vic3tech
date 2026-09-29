@@ -470,7 +470,13 @@
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
     // Split so deploy.sh's substitution can't rewrite this check too.
     if (document.getElementById("buildLink").href.includes("__BUILD" + "_SHA__")) document.getElementById("buildLink").remove();
-    const asset = path => `/vic3/${path}?v=__DATA_VERSION__`;
+    // deploy.sh replaces the placeholder with a digest of the data. A local
+    // preview still has the placeholder, which never changes, so browsers
+    // would keep serving stale data.json/economy.json after a re-extract --
+    // use a fresh value per page load there instead.
+    const DATA_VERSION = "__DATA_VERSION__";
+    const assetVersion = DATA_VERSION.startsWith("__") ? String(Date.now()) : DATA_VERSION;
+    const asset = path => `/vic3/${path}?v=${assetVersion}`;
     const flag = tag => ISO[tag] ? String.fromCodePoint(...[...ISO[tag]].map(c => 0x1F1A5 + c.charCodeAt(0))) : null;
     const flagHtml = (c, cls = "flag") => flag(c.tag) ? `<span class="${cls}" title="${c.name}">${flag(c.tag)}</span>` : `<span class="${cls} none" title="${c.name}">${c.tag}</span>`;
     const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
@@ -1064,7 +1070,12 @@
         if (m.type === "progress") { const bar = document.getElementById("saveBar"); if (bar) bar.style.width = Math.round(m.done * 100) + "%"; return; }
         worker.terminate();
         if (m.type === "error") { setSaveStatus(`${esc(m.message)} <a href="#" data-open-save-help>How?</a>`, true); return; }
-        await applySave(m.summary, file.name);
+        try {
+          await applySave(m.summary, file.name);
+        } catch (e) {
+          console.error(e);
+          setSaveStatus(`Couldn't show this save: ${esc(e.message)}. Try reloading the page.`, true);
+        }
       };
       worker.onerror = e => { worker.terminate(); setSaveStatus("Couldn't read that file: " + esc(e.message || "unknown error"), true); };
       worker.postMessage(file);
