@@ -300,6 +300,9 @@ class Vic3Extractor
       index += 1 if tradeable
       {
         id: id, name: text(id) || humanize(id), cost: Vic3Script.value(body, "cost").to_f,
+        # Units moved per "trade" on the world market (game default 10) -- a
+        # state's trade flows count trades, so flow x this = goods moved.
+        traded_quantity: (Vic3Script.value(body, "traded_quantity") || 10).to_f,
         category: Vic3Script.value(body, "category"), icon: image(Vic3Script.value(body, "texture"), "goods", 64),
         market_index: tradeable ? index : nil
       }
