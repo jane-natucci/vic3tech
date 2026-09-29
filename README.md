@@ -8,7 +8,7 @@ Everything is read straight from the game's own files, not transcribed by hand.
 
 - `index.html` — the whole site: one static page, plain HTML/CSS/JS, no build step or framework.
 - `extract.rb` — reads a local Victoria 3 install and writes `vic3/data.json`, `vic3/economy.json` and the images the page uses. Plain Ruby; needs [ImageMagick](https://imagemagick.org) (`magick`) for the images.
-- `deploy.sh` — uploads the page and the generated files to S3, served through CloudFront.
+- `deploy.sh` — uploads the page and the generated files to S3, served through CloudFront. See [Deploying](#deploying).
 
 The generated files come from Paradox's game data, so they're **not in this repo**. Run the extractor against your own install to get them.
 
@@ -21,6 +21,22 @@ bundle install && bundle exec ruby -run -e httpd . -p 8000   # then open http://
 ```
 
 Re-run `extract.rb` after a game patch. The page shows which game version its data came from in the footer.
+
+## Deploying
+
+Two kinds of deploy, because the game data can only be generated where Victoria 3 is installed:
+
+- **Code** (`index.html` and our own files in `vic3/`): deployed automatically by GitHub Actions on every push to `main` (`./deploy.sh --code-only`). It reuses the game data already on S3.
+- **Game data** (after a game patch, or anything `extract.rb` produces): run locally on a machine with Victoria 3 installed:
+
+  ```bash
+  ruby extract.rb && ./deploy.sh
+  ```
+
+> [!IMPORTANT]
+> **The very first deploy must be a full local one** (`ruby extract.rb && ./deploy.sh`). CI has no game data to upload, so until S3 has a `vic3/data.json`, the GitHub Action stops with an error saying so. The same applies to a fresh bucket.
+
+Local deploys use the `personal` AWS profile by default (`AWS_PROFILE` overrides it). CI logs into AWS through GitHub's OIDC, into a role that can only write to this site's bucket (`terraform-cloud`: `main/vic3tech_jane_berlin.tf`), so no AWS keys are stored in this repo.
 
 ## Known approximations
 
