@@ -14,9 +14,10 @@
 const SECTIONS = new Set([
   "date", "player_manager", "country_manager", "technology", "states", "building_manager",
   "new_combat_unit_manager", "military_formation_manager", "ship_templates_manager", "ship_manager",
+  "market_manager", "treaty_manager", "treaty_article_manager",
 ]);
 // Blocks inside an entry whose contents we need (everything else is skipped).
-const BLOCKS = new Set(["acquired_technologies", "prestige", "gdp", "provinces", "versions"]);
+const BLOCKS = new Set(["acquired_technologies", "prestige", "gdp", "provinces", "versions", "inputs"]);
 
 self.onmessage = async ({ data: file }) => {
   try {
@@ -37,7 +38,11 @@ async function read(file) {
     formations: {},     // id -> { country, type }
     shipVersions: {},   // version -> { type, country }
     ships: [],          // { fleet, version }
+    prices: [],         // world-market price history per market channel (oldest -> newest)
+    treaties: {},       // id -> { first, second, since, days }
+    articles: [],       // { article, treaty, source, target, goods, quantity }
   };
+  let priceChannel = null, inPrices = false;
   let section = null, entry = null, block = null, blockLines = [];
   let bytes = 0, lastReport = 0;
 
@@ -72,6 +77,18 @@ async function read(file) {
       return;
     }
     if (!section) return;
+
+    // market_manager.world_market.price_trend.channels.<n>.values={ ... }:
+    // one channel per world-market good, 52 samples 28 days apart, oldest
+    // first. (Its database only holds each market's owner.)
+    if (section === "market_manager") {
+      const ch = /^\t\t\t\t(\d+)=\{$/.exec(line);
+      if (ch) priceChannel = +ch[1];
+      else if (line === "\t\t\t\t\tvalues={") inPrices = true;
+      else if (inPrices && line.trim() === "}") inPrices = false;
+      else if (inPrices && priceChannel != null) out.prices[priceChannel] = (out.prices[priceChannel] || []).concat(numbers([line.trim()]));
+      return;
+    }
 
     if (line.startsWith("\t\t") && line[2] !== "\t") {        // depth 2: entry start/end
       if (line === "\t\t}") { if (entry) finish(entry); entry = null; block = null; return; }
@@ -125,6 +142,18 @@ async function read(file) {
       case "ship_templates_manager":
         for (const v of numbers(e.versions)) out.shipVersions[v] = { type: e.type, country: e.country };
         break;
+      case "treaty_manager":
+        if (e.first_country) out.treaties[e.id] = { first: e.first_country, second: e.second_country, since: e.entered_into_force_on, days: +e.binding_period || null };
+        break;
+      case "treaty_article_manager": {
+        // inputs={ { goods="paper" } { quantity=10 } } -- goods transfers name a good; money transfers only a quantity (£/week).
+        const inputs = (e.inputs || []).join(" ");
+        if (e.article) out.articles.push({
+          article: e.article, treaty: e.treaty, source: e.source_country, target: e.target_country,
+          goods: /goods="([^"]+)"/.exec(inputs)?.[1] || null, quantity: +(/quantity=([\d.]+)/.exec(inputs)?.[1]) || null,
+        });
+        break;
+      }
       case "ship_manager":
         if (e.version) out.ships.push({ fleet: e.fleet, version: e.version });
         break;
@@ -170,5 +199,12 @@ function summarize(o) {
     c.navy[v.type] = (c.navy[v.type] || 0) + 1;
   }
   const countries = Object.values(byId).filter(c => c.states.length);
-  return { date: o.date, player: byId[o.playerCountry]?.tag || null, countries };
+  const tag = id => byId[id]?.tag || null;
+  const treaties = Object.entries(o.treaties).map(([id, t]) => ({
+    countries: [tag(t.first), tag(t.second)], since: t.since, days: t.days,
+    articles: o.articles.filter(a => a.treaty === id).map(a => ({
+      article: a.article, source: tag(a.source), target: tag(a.target), goods: a.goods, quantity: a.quantity,
+    })),
+  })).filter(t => t.articles.length);
+  return { date: o.date, player: byId[o.playerCountry]?.tag || null, countries, treaties, prices: o.prices };
 }

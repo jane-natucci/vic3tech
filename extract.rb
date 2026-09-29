@@ -102,6 +102,9 @@ class Vic3Extractor
       # name; the page names those after their capital instead.
       country_names: country_definitions.keys.filter_map { |tag| (name = text(tag)) && [tag, name] }.to_h,
       state_regions: state_region,
+      goods: extract_goods,
+      treaty_articles: files("treaty_articles").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }.to_h { |id, _, _| [id, text(id) || humanize(id)] },
+      treaties: extract_treaties,
       techs: techs.values.map { |t| t.except(:texture).merge(icon: icons[t[:id]]) },
       units: units,
       ships: ships,
@@ -131,7 +134,8 @@ class Vic3Extractor
   def loc
     @loc ||= Dir[@game.join("localization/english/**/*_l_english.yml")].each_with_object({}) do |path, h|
       File.foreach(path, encoding: "UTF-8") do |line|
-        h[$1] ||= $2 if line =~ /\A\s+([\w.\-]+):\d*\s+"(.*)"\s*(?:#.*)?\z/
+        # Most files indent entries by a space, a few don't -- accept both.
+        h[$1] ||= $2 if line =~ /\A\s*([\w.\-]+):\d*\s+"(.*)"\s*(?:#.*)?\z/
       end
     end
   end
@@ -282,6 +286,64 @@ class Vic3Extractor
       end
       regions
     end
+  end
+
+  # Every good in the game's own order, which is also the order a save's
+  # world-market price history uses -- minus the goods that never reach the
+  # world market (local ones like services, and untradeable gold), which is
+  # what `market_index` accounts for.
+  def extract_goods
+    index = -1
+    read(@game.join("common/goods/00_goods.txt")).filter_map do |id, _, body|
+      next unless body.is_a?(Array)
+      tradeable = Vic3Script.value(body, "local") != "yes" && Vic3Script.value(body, "tradeable") != "no"
+      index += 1 if tradeable
+      {
+        id: id, name: text(id) || humanize(id), cost: Vic3Script.value(body, "cost").to_f,
+        category: Vic3Script.value(body, "category"), icon: image(Vic3Script.value(body, "texture"), "goods", 64),
+        market_index: tradeable ? index : nil
+      }
+    end
+  end
+
+  # Treaties in force at the 1836 start (common/history/treaties). Some are
+  # written twice, `if = { limit = { has_dlc_feature = ... } }` with a richer
+  # version and `else` without; like the rest of the data, take the DLC one.
+  def extract_treaties
+    treaties = []
+    collect = lambda do |block|
+      block.each do |k, _, v|
+        next unless v.is_a?(Array)
+        case k
+        when "create_treaty" then treaties << treaty(v)
+        when "if", "TREATIES" then collect.(v)
+        end
+      end
+    end
+    collect.(read(@game.join("common/history/treaties/00_historical_treaties.txt")))
+    treaties
+  end
+
+  def treaty(body)
+    tag = ->(v) { v&.delete_prefix("c:") }
+    articles = Vic3Script.value(body, "articles_to_create").to_a.filter_map do |_, _, a|
+      next unless a.is_a?(Array)
+      inputs = Vic3Script.value(a, "inputs").to_a.flat_map { |_, _, i| i.is_a?(Array) ? i : [] }
+      {
+        article: Vic3Script.value(a, "article"),
+        source: tag.(Vic3Script.value(a, "source_country")), target: tag.(Vic3Script.value(a, "target_country")),
+        goods: Vic3Script.value(inputs, "goods")&.delete_prefix("g:"),
+        quantity: Vic3Script.value(inputs, "quantity")&.to_f,
+        state: Vic3Script.value(inputs, "state")&.[](/s:(STATE_\w+)/, 1)
+      }.compact
+    end
+    {
+      name: text(Vic3Script.value(body, "name").to_s) || "Treaty",
+      countries: [tag.(Vic3Script.value(body, "first_country")), tag.(Vic3Script.value(body, "second_country"))],
+      since: Vic3Script.value(body, "entered_into_force_on"),
+      years: Vic3Script.value(Vic3Script.value(body, "binding_period").to_a, "years")&.to_i,
+      articles: articles
+    }
   end
 
   def country_definitions

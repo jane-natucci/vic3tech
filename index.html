@@ -308,6 +308,32 @@
     #saveDialog .credit { font-size: 0.8em; color: var(--muted); line-height: 1.45; }
     #saveDialog .close { position: absolute; top: 12px; right: 12px; font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
 
+    /* Trade: treaties and world-market prices */
+    #tradeView { overflow: auto; flex-direction: column; }
+    #tradeView .subtabs { position: sticky; top: 0; left: 0; }
+    #tradeView .note { font-size: 0.78em; color: var(--muted); padding: 10px 20px 0; line-height: 1.45; max-width: 980px; }
+    .trade-ctl { display: flex; gap: 14px; align-items: center; padding: 10px 20px 0; font-size: 0.85em; color: var(--muted); }
+    .trade-ctl label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
+    #tradeBody { padding: 12px 20px 40px; }
+    .treaties { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .treaty { background: var(--node); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 0.85em; }
+    .treaty h3 { font-family: Georgia, serif; font-weight: normal; font-size: 1.15em; margin-bottom: 2px; }
+    .treaty .meta { color: var(--muted); font-size: 0.85em; margin-bottom: 8px; }
+    .treaty ul { list-style: none; }
+    .treaty li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line); align-items: center; }
+    .treaty li:first-child { border-top: none; }
+    .treaty .dir { color: var(--muted); font-size: 0.9em; }
+    .treaty .val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+    .treaty .net { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-weight: 600; }
+    .treaty .net .pos { color: var(--inf); } .treaty .net .neg { color: var(--art); }
+    .ico-good { width: 18px; height: 18px; vertical-align: -4px; margin-right: 4px; }
+    .prices td.num { text-align: right; }
+    .pct { display: inline-block; width: 120px; height: 8px; background: var(--line); border-radius: 4px; position: relative; vertical-align: middle; }
+    .pct i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+    .pct::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+    svg.spark { width: 120px; height: 24px; vertical-align: middle; }
+    svg.spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
 
@@ -390,6 +416,7 @@
       <button data-view="armyView">Armies<span class="long"> &amp; navies</span></button>
       <button data-view="unitView">Units<span class="long"> &amp; mobilization</span></button>
       <button data-view="economyView">Economy</button>
+      <button data-view="tradeView">Trade</button>
     </div>
     <div class="save-ctl" id="saveCtl">
       <button id="loadSave" title="See your own campaign in every tab">Load your save…</button>
@@ -453,6 +480,13 @@
         <table id="econTable"></table>
       </div>
       <div class="detail" id="econDetail"></div>
+    </section>
+
+    <section class="view" id="tradeView">
+      <div class="subtabs" id="tradeTabs"></div>
+      <p class="note" id="tradeNote"></p>
+      <div class="trade-ctl" id="tradeCtl"></div>
+      <div id="tradeBody"></div>
     </section>
 
     <footer>
@@ -524,13 +558,13 @@
     // a link copied at any point actually reopens exactly where it was
     // copied from instead of always defaulting back to Technology (the
     // only tab/sub-tab a fresh page load can otherwise guess).
-    const VIEW_HASH = { techView: null, armyView: "army", unitView: "units", economyView: "economy" };
-    const HASH_VIEW = { army: "armyView", units: "unitView", economy: "economyView" };
+    const VIEW_HASH = { techView: null, armyView: "army", unitView: "units", economyView: "economy", tradeView: "trade" };
+    const HASH_VIEW = { army: "armyView", units: "unitView", economy: "economyView", trade: "tradeView" };
     // Which state key holds each tab's own sub-tab, and what values are
     // valid for it -- economyView's is checked against a fixed list since
     // ECON_KINDS doesn't exist as a named lookup the way UNIT_KINDS does.
-    const SUB_KEY = { unitView: "unitKind", economyView: "econKind" };
-    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources" };
+    const SUB_KEY = { unitView: "unitKind", economyView: "econKind", tradeView: "tradeKind" };
+    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" };
     function parseHash() {
       const [tagPart, part2, part3] = location.hash.slice(1).split("/");
       const tag = tagPart ? tagPart.toUpperCase() : null;
@@ -725,6 +759,7 @@
           men: numeric("men", menOf)
         }[state.armySort] || numeric("battalions", battalions);
       }
+      if (viewOn("tradeView")) return numeric("treaties", c => treatiesOf(c.tag).length);
       if (viewOn("unitView")) {
         const kind = state.unitKind;
         return numeric(`${UNIT_KINDS[kind].toLowerCase()} it can build`, c => canBuild(c, kind), state.data[kind].length);
@@ -1009,6 +1044,113 @@
       el.innerHTML = html;
     }
 
+    // --- Trade: treaties and world-market prices ----------------------------------
+    // Treaties come from the game files at 1836 and from the save once one is
+    // loaded. Goods in a goods transfer are valued at the save's current world
+    // price, or at the good's base price at 1836 (real prices only exist once a
+    // game runs). Money transfers are already £/week. A save's price history is
+    // indexed by the good's position in the full goods list (goods that never
+    // reach the world market -- services, transportation, electricity, gold --
+    // have none).
+    state.tradeKind = "treaties"; state.treatyScope = "mine";
+    const goodIndex = id => state.data.goods.findIndex(g => g.id === id);
+    const goodById = id => state.data.goods.find(g => g.id === id);
+    const priceHistory = id => state.saveTrade?.prices[goodIndex(id)] || null;
+    const priceOf = id => priceHistory(id)?.at(-1) ?? goodById(id)?.cost ?? 0;
+    const allTreaties = () => state.saveTrade ? state.saveTrade.treaties : state.data.treaties;
+    const treatiesOf = tag => allTreaties().filter(t => t.countries.includes(tag));
+    const money = n => `£${Math.round(n).toLocaleString("en")}`;
+    const countryLabel = tag => { const c = state.byTag[tag]; return c ? `${flagHtml(c, "")} ${esc(c.name)}` : esc(tag || "?"); };
+
+    // Dates are "1834.4.22", or -- when the melter can't format a very early
+    // one -- raw hours since year -5000 in the game's 365-day calendar.
+    function treatyDate(v) {
+      if (!v) return "";
+      if (/^\d{6,}$/.test(v)) {
+        const days = Math.floor(+v / 24), year = Math.floor(days / 365) - 5000;
+        return String(year);
+      }
+      const [y, m, d] = v.split(".").map(Number);
+      return new Date(Date.UTC(y, (m || 1) - 1, d || 1)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+    }
+
+    // One article's value per week from `tag`'s point of view (+ received, − given).
+    function articleValue(a, tag) {
+      let v = 0;
+      if (a.article === "goods_transfer" && a.goods) v = (a.quantity || 0) * priceOf(a.goods);
+      else if (a.article === "money_transfer") v = a.quantity || 0;
+      else return null;
+      return a.target === tag ? v : a.source === tag ? -v : null;
+    }
+
+    function treatyCard(t, tag) {
+      const other = t.countries.find(c => c !== tag) || t.countries[1];
+      const title = t.name || `${state.byTag[t.countries[0]]?.name || t.countries[0]} – ${state.byTag[t.countries[1]]?.name || t.countries[1]}`;
+      const length = t.years ? `${t.years} years` : t.days ? `${Math.round(t.days / 365)} years` : "";
+      let net = 0, valued = false;
+      const rows = t.articles.map(a => {
+        const name = esc(state.data.treaty_articles?.[a.article] || a.article);
+        const dir = a.source && a.target ? `<span class="dir">${esc(state.byTag[a.source]?.name || a.source)} → ${esc(state.byTag[a.target]?.name || a.target)}</span>` : "";
+        let val = "";
+        if (a.article === "goods_transfer" && a.goods) {
+          const g = goodById(a.goods), worth = (a.quantity || 0) * priceOf(a.goods);
+          val = `${g?.icon ? `<img class="ico-good" src="${asset(g.icon)}" alt="">` : ""}${a.quantity} ${esc(g?.name || a.goods)} ≈ ${money(worth)}/wk`;
+        } else if (a.article === "money_transfer") val = `${money(a.quantity || 0)}/wk`;
+        // Treaty ports name a state: use its real name if the economy data is loaded, else tidy the ID.
+        else if (a.state) val = esc(economy?.regions?.[a.state]?.name || a.state.replace(/^STATE_/, "").toLowerCase().replace(/(^|_)(\w)/g, (_, sp, ch) => (sp ? " " : "") + ch.toUpperCase()));
+        const v = articleValue(a, tag);
+        if (v != null) { net += v; valued = true; }
+        return `<li><span>${name} ${dir}</span><span class="val">${val}</span></li>`;
+      }).join("");
+      const who = state.byTag[tag]?.name || tag;
+      return `<div class="treaty">
+        <h3>${esc(title)}</h3>
+        <div class="meta">${countryLabel(t.countries[0])} &amp; ${countryLabel(t.countries[1])}${t.since ? ` · since ${treatyDate(t.since)}` : ""}${length ? ` · ${length}` : ""}</div>
+        <ul>${rows}</ul>
+        ${valued && t.countries.includes(tag) ? `<div class="net"><span>Net for ${esc(who)}</span><span class="${net >= 0 ? "pos" : "neg"}">${net >= 0 ? "+" : "−"}${money(Math.abs(net))}/wk</span></div>` : ""}
+      </div>`;
+    }
+
+    function sparkline(values) {
+      if (!values?.length) return "";
+      const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+      const pts = values.map((v, i) => `${(i / (values.length - 1) * 118 + 1).toFixed(1)},${(22 - (v - min) / span * 20).toFixed(1)}`).join(" ");
+      return `<svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
+    }
+
+    function renderTrade() {
+      const kind = state.tradeKind, c = current(), save = !!state.saveTrade;
+      document.getElementById("tradeTabs").innerHTML = [["treaties", "Treaties"], ["prices", save ? "World market prices" : "Prices"]].map(([k, label]) =>
+        `<button data-trade="${k}" class="${k === kind ? "on" : ""}">${label}</button>`).join("");
+      const note = document.getElementById("tradeNote"), ctl = document.getElementById("tradeCtl"), body = document.getElementById("tradeBody");
+
+      if (kind === "treaties") {
+        note.innerHTML = save
+          ? "Treaties in your save. Goods transfers are valued at the current <b>world market</b> price (the save has no local prices), money transfers are exact; the net is per week for the selected country."
+          : "Treaties in force at the 1836 start. Goods transfers are valued at <b>base prices</b> — real prices only exist once a game runs, so load a save for those. Money transfers are exact.";
+        ctl.innerHTML = `<label><input type="radio" name="treatyScope" value="mine" ${state.treatyScope === "mine" ? "checked" : ""}> ${esc(c.name)}'s treaties</label>
+          <label><input type="radio" name="treatyScope" value="all" ${state.treatyScope === "all" ? "checked" : ""}> All treaties</label>`;
+        const list = state.treatyScope === "all" ? allTreaties() : treatiesOf(c.tag);
+        body.innerHTML = list.length
+          ? `<div class="treaties">${list.map(t => treatyCard(t, c.tag)).join("")}</div>`
+          : `<p class="muted">${esc(c.name)} has no treaties${save ? " in this save" : " at the start"}. Pick another country, or show all treaties.</p>`;
+        return;
+      }
+
+      ctl.innerHTML = "";
+      note.innerHTML = save
+        ? "Current world market price of every traded good, how far it is from its base price (the game caps prices at −75% and +75%), and the last ~4 years of history. At +75% there's far more demand than supply."
+        : "Base price of every traded good. Real prices only exist once a game runs — load a save to see current world market prices and their history.";
+      const goods = state.data.goods.filter(g => g.market_index != null);
+      body.innerHTML = `<table class="prices"><tr><th>Good</th><th class="num">Base</th>${save ? `<th class="num">Now</th><th>vs base</th><th>Last ~4 years</th>` : ""}</tr>` +
+        goods.map(g => {
+          const hist = priceHistory(g.id), now = hist?.at(-1), pct = now ? now / g.cost - 1 : 0;
+          const bar = pct >= 0 ? `left:50%;width:${Math.min(pct / 0.75, 1) * 50}%;background:var(--art)` : `right:50%;width:${Math.min(-pct / 0.75, 1) * 50}%;background:var(--inf)`;
+          return `<tr><td><img class="ico-good" src="${asset(g.icon)}" alt="">${esc(g.name)}</td><td class="num">£${g.cost}</td>` +
+            (save ? `<td class="num">${now ? `£${now.toFixed(1)}` : "–"}</td><td><span class="pct" title="${(pct * 100).toFixed(0)}% vs base"><i style="${bar}"></i></span> ${now ? `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(0)}%` : ""}</td><td>${sparkline(hist)}</td>` : "") + `</tr>`;
+        }).join("") + `</table>`;
+    }
+
     const viewOn = id => document.getElementById(id).classList.contains("on");
     // sync: false for callers that already wrote the exact hash they want
     // (a tech-anchor link, "#TAG/tech_id") right before calling this --
@@ -1075,6 +1217,7 @@
       if (viewOn("armyView")) renderArmies();
       if (viewOn("unitView")) renderUnits();
       if (viewOn("economyView")) renderEconomy();
+      if (viewOn("tradeView")) renderTrade();
     }
 
     // --- Loading a melted save -------------------------------------------------
@@ -1136,6 +1279,7 @@
       aggregateEconomy(econ);
       useCountries(countries);
       state.saveInfo = { date: sum.date, player: sum.player, fileName };
+      state.saveTrade = { treaties: sum.treaties || [], prices: sum.prices || [] };
       const [y, mo, d] = sum.date.split(".").map(Number);
       // Just the date: the save strip under the header already says "Your save".
       document.getElementById("eraLabel").textContent = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -1157,7 +1301,7 @@
       const b = state.base; if (!b) return;
       useCountries(b.countries);
       economy.countries = b.econCountries; economy.resourceIds = b.resourceIds;
-      state.saveInfo = null; state.base = null; state.preview = null;
+      state.saveInfo = null; state.saveTrade = null; state.base = null; state.preview = null;
       if (!state.byTag[state.pinned]) state.pinned = b.pinned;
       document.getElementById("eraLabel").textContent = "1836 start";
       setSaveStatus("");
@@ -1236,10 +1380,18 @@
       renderSidebar();
       if (viewOn("armyView")) renderArmies();
       if (viewOn("economyView")) renderEconomy();
+      if (viewOn("tradeView")) renderTrade();
     }));
 
     document.getElementById("tabs").addEventListener("click", e => {
       const b = e.target.closest("button"); if (b) showView(b.dataset.view);
+    });
+    document.getElementById("tradeTabs").addEventListener("click", e => {
+      const b = e.target.closest("button[data-trade]"); if (!b) return;
+      state.tradeKind = b.dataset.trade; syncHash(); renderTrade(); renderSidebar();
+    });
+    document.getElementById("tradeCtl").addEventListener("change", e => {
+      if (e.target.name === "treatyScope") { state.treatyScope = e.target.value; renderTrade(); }
     });
     document.getElementById("econTabs").addEventListener("click", e => {
       const b = e.target.closest("button[data-econ]"); if (!b) return;
