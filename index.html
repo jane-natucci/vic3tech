@@ -104,6 +104,8 @@
        grows (a loaded save adds prestige and GDP). */
     .current { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.95em; flex: 1 1 260px; min-width: 0; }
     .current > div { min-width: 0; }
+    .current .cname, .current .cstats { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .current .cstats { font-size: 0.8em; color: var(--muted); }
     .current .flag { font-size: 1.6em; }
     .current b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
     .pill { font-size: 0.72em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
@@ -309,6 +311,10 @@
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
 
+    /* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
+       mobilization" -> "Units", so the header stays one row. */
+    @media (max-width: 1280px) { .tabs .long { display: none; } }
+
     /* Only shown on phones (see below). */
     .picker-head, .sheet-close { display: none; }
 
@@ -330,6 +336,7 @@
       .save-ctl { display: none; } /* loading a 300+ MB save is a desktop thing */
       .current { order: 2; flex: 1 0 100%; margin-left: 0; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-size: 0.9em; }
       .current > div { min-width: 0; flex: 1; }
+      .current .cstats { white-space: normal; } /* phones: wrapping is fine here */
       .current::after { content: "Change ▾"; flex: none; font-size: 0.8em; color: var(--accent); }
 
       aside { display: none; }
@@ -755,9 +762,15 @@
 
     function renderHeader() {
       const c = current();
-      const cats = state.data.categories.map(cat => `${catCount(c, cat)} ${cat}`).join(" · ");
-      document.getElementById("current").innerHTML = `${flagHtml(c)}<div><b>${esc(c.name)}</b>
-        <div style="font-size:0.8em;color:var(--muted)">${cats} techs · ${battalions(c)} battalions · ${ships(c)} ships${c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : ""}${c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M GDP` : ""}</div></div>
+      // One compact line that never wraps on desktop (the header row must not
+      // grow): tech counts as production / military / society, the long form
+      // is in the tooltip. A loaded save adds prestige and GDP.
+      const full = state.data.categories.map(cat => `${catCount(c, cat)} ${cat}`).join(" · ") + ` techs · ${battalions(c)} battalions · ${ships(c)} ships` +
+        (c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : "") + (c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M GDP` : "");
+      const short = `Tech ${state.data.categories.map(cat => catCount(c, cat)).join(" / ")} · ${battalions(c)} battalions · ${ships(c)} ships` +
+        (c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : "") + (c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M` : "");
+      document.getElementById("current").innerHTML = `${flagHtml(c)}<div><b class="cname">${esc(c.name)}</b>
+        <div class="cstats" title="${esc(full)} (tech: production / military / society)">${esc(short)}</div></div>
         ${c.tier ? `<span class="pill" title="Which starting-tech package the game gives this country">Tech tier ${c.tier}</span>` : ""}
         ${state.preview && state.preview !== state.pinned ? `<span class="pill">preview</span>` : ""}`;
     }
@@ -1124,8 +1137,8 @@
       useCountries(countries);
       state.saveInfo = { date: sum.date, player: sum.player, fileName };
       const [y, mo, d] = sum.date.split(".").map(Number);
-      const when = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-      document.getElementById("eraLabel").textContent = `your save · ${when}`;
+      // Just the date: the save strip under the header already says "Your save".
+      document.getElementById("eraLabel").textContent = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
       if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
       else if (!state.byTag[state.pinned]) state.pinned = countries[0]?.tag;
       const you = sum.player ? state.byTag[sum.player]?.name || sum.player : null;
