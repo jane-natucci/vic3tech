@@ -408,7 +408,8 @@
       PER: "IR", EGY: "EG", MOR: "MA", PAN: "IN"
     };
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
-    if (document.getElementById("buildLink").href.includes("__BUILD_SHA__")) document.getElementById("buildLink").remove();
+    // Split so deploy.sh's substitution can't rewrite this check too.
+    if (document.getElementById("buildLink").href.includes("__BUILD" + "_SHA__")) document.getElementById("buildLink").remove();
     const asset = path => `/vic3/${path}?v=__DATA_VERSION__`;
     const flag = tag => ISO[tag] ? String.fromCodePoint(...[...ISO[tag]].map(c => 0x1F1A5 + c.charCodeAt(0))) : null;
     const flagHtml = (c, cls = "flag") => flag(c.tag) ? `<span class="${cls}" title="${c.name}">${flag(c.tag)}</span>` : `<span class="${cls} none" title="${c.name}">${c.tag}</span>`;
