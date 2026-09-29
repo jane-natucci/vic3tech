@@ -17,7 +17,7 @@ The generated files come from Paradox's game data, so they're **not in this repo
 ```bash
 ruby extract.rb                                   # default Steam path on macOS
 ruby extract.rb "/path/to/Victoria 3/game"        # or point it at your install
-python3 -m http.server 8000                       # then open http://localhost:8000
+bundle install && bundle exec ruby -run -e httpd . -p 8000   # then open http://localhost:8000
 ```
 
 Re-run `extract.rb` after a game patch. The page shows which game version its data came from in the footer.
