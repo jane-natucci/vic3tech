@@ -564,7 +564,7 @@
     // valid for it -- economyView's is checked against a fixed list since
     // ECON_KINDS doesn't exist as a named lookup the way UNIT_KINDS does.
     const SUB_KEY = { unitView: "unitKind", economyView: "econKind", tradeView: "tradeKind" };
-    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" };
+    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" || k === "centers" };
     function parseHash() {
       const [tagPart, part2, part3] = location.hash.slice(1).split("/");
       const tag = tagPart ? tagPart.toUpperCase() : null;
@@ -759,7 +759,9 @@
           men: numeric("men", menOf)
         }[state.armySort] || numeric("battalions", battalions);
       }
-      if (viewOn("tradeView")) return numeric("treaties", c => treatiesOf(c.tag).length);
+      if (viewOn("tradeView")) return state.tradeKind === "centers"
+        ? numeric("trade center levels", c => econOf(c).levels?.building_trade_center || 0)
+        : numeric("treaties", c => treatiesOf(c.tag).length);
       if (viewOn("unitView")) {
         const kind = state.unitKind;
         return numeric(`${UNIT_KINDS[kind].toLowerCase()} it can build`, c => canBuild(c, kind), state.data[kind].length);
@@ -1120,7 +1122,7 @@
 
     function renderTrade() {
       const kind = state.tradeKind, c = current(), save = !!state.saveTrade;
-      document.getElementById("tradeTabs").innerHTML = [["treaties", "Treaties"], ["prices", save ? "World market prices" : "Prices"]].map(([k, label]) =>
+      document.getElementById("tradeTabs").innerHTML = [["treaties", "Treaties"], ["prices", save ? "World market prices" : "Prices"], ["centers", "Trade centers"]].map(([k, label]) =>
         `<button data-trade="${k}" class="${k === kind ? "on" : ""}">${label}</button>`).join("");
       const note = document.getElementById("tradeNote"), ctl = document.getElementById("tradeCtl"), body = document.getElementById("tradeBody");
 
@@ -1137,6 +1139,8 @@
         return;
       }
 
+      if (kind === "centers") { renderTradeCenters(c, save, note, ctl, body); return; }
+
       ctl.innerHTML = "";
       note.innerHTML = save
         ? "Current world market price of every traded good, how far it is from its base price (the game caps prices at −75% and +75%), and the last ~4 years of history. It's one world price per good, the same for every country (the save doesn't keep each market's local prices). At +75%, demand far outweighs supply, or nobody produces the good yet (e.g. aeroplanes in 1841)."
@@ -1149,6 +1153,40 @@
           return `<tr><td><img class="ico-good" src="${asset(g.icon)}" alt="">${esc(g.name)}</td><td class="num">£${g.cost}</td>` +
             (save ? `<td class="num">${now ? `£${now.toFixed(1)}` : "–"}</td><td><span class="pct" title="${(pct * 100).toFixed(0)}% vs base"><i style="${bar}"></i></span> ${now ? `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(0)}%` : ""}</td><td>${sparkline(hist)}</td>` : "") + `</tr>`;
         }).join("") + `</table>`;
+    }
+
+    // Trade centers: where they are and, with a save, what each one moves.
+    // A state's trade flows are keyed by the good's position in the goods list;
+    // negative = imported, positive = exported, in the game's own trade units.
+    function renderTradeCenters(c, save, note, ctl, body) {
+      ctl.innerHTML = "";
+      if (!economy) { loadEconomy(); body.innerHTML = `<p class="muted">Loading…</p>`; return; }
+      note.innerHTML = save
+        ? `${esc(c.name)}'s trade centers in your save: level, weekly revenue and profit, and what each state's trade center exports and imports (in the game's trade units), then the totals per good. Hover over (or tap) a good for its name.`
+        : `${esc(c.name)}'s trade centers at the 1836 start and their levels. What they import and export only exists once a game runs — load a save to see it.`;
+      const e = econOf(c);
+      const states = e.states.filter(st => (st.buildings.building_trade_center || 0) > 0 || Object.keys(st.trade || {}).length)
+        .sort((a, b) => (b.buildings.building_trade_center || 0) - (a.buildings.building_trade_center || 0));
+      if (!states.length) { body.innerHTML = `<p class="muted">${esc(c.name)} has no trade centers${save ? " in this save" : " at the start"}.</p>`; return; }
+      const goods = state.data.goods;
+      const flowList = (trade, sign) => Object.entries(trade || {}).filter(([, v]) => sign * v > 0).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .map(([i, v]) => { const g = goods[i]; return g ? `<span title="${esc(g.name)}" style="white-space:nowrap"><img class="ico-good" src="${asset(g.icon)}" alt="${esc(g.name)}">${+Math.abs(v).toFixed(1)}</span>` : ""; }).join(" ");
+      let html = `<table class="prices"><tr><th>State</th><th class="num">Level</th>${save ? `<th class="num">Revenue/wk</th><th class="num">Profit/wk</th><th>Exports</th><th>Imports</th>` : ""}</tr>` +
+        states.map(st => `<tr><td>${esc(st.name)}</td><td class="num">${st.buildings.building_trade_center || "–"}</td>` +
+          (save ? `<td class="num">${st.tradeCenter ? money(st.tradeCenter.revenue) : "–"}</td><td class="num">${st.tradeCenter ? money(st.tradeCenter.profit) : "–"}</td><td>${flowList(st.trade, 1)}</td><td>${flowList(st.trade, -1)}</td>` : "") + `</tr>`).join("") + `</table>`;
+      if (save) {
+        const totals = {};
+        for (const st of states) for (const [i, v] of Object.entries(st.trade || {})) {
+          const t = totals[i] ??= { exp: 0, imp: 0 };
+          if (v > 0) t.exp += v; else t.imp -= v;
+        }
+        const rows = Object.entries(totals).sort((a, b) => (b[1].exp + b[1].imp) - (a[1].exp + a[1].imp));
+        html += `<h3 style="font-family:Georgia,serif;font-weight:normal;margin:22px 0 8px">All of ${esc(c.name)}'s trade centers, per good</h3>` +
+          `<table class="prices"><tr><th>Good</th><th class="num">Exported</th><th class="num">Imported</th><th class="num">Net</th></tr>` +
+          rows.map(([i, t]) => { const g = goods[i], net = t.exp - t.imp;
+            return `<tr><td>${g ? `<img class="ico-good" src="${asset(g.icon)}" alt="">${esc(g.name)}` : i}</td><td class="num">${t.exp ? +t.exp.toFixed(1) : "–"}</td><td class="num">${t.imp ? +t.imp.toFixed(1) : "–"}</td><td class="num" style="color:var(${net >= 0 ? "--inf" : "--art"})">${net >= 0 ? "+" : "−"}${+Math.abs(net).toFixed(1)}</td></tr>`; }).join("") + `</table>`;
+      }
+      body.innerHTML = html;
     }
 
     const viewOn = id => document.getElementById(id).classList.contains("on");
@@ -1272,6 +1310,7 @@
             id: st.region, name: r.name, share: r.provinces ? Math.min(1, st.provinces / r.provinces) : 1,
             arable_land: r.arable_land, arable_owned: st.arable_land, arable: r.arable, capped: r.capped, discoverable: r.discoverable,
             buildings: Object.fromEntries(Object.entries(st.buildings).filter(([id]) => econ.buildings[id])),
+            trade: st.trade || {}, tradeCenter: st.tradeCenter || null,
           };
         }) };
       }

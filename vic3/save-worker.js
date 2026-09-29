@@ -17,7 +17,7 @@ const SECTIONS = new Set([
   "market_manager", "treaty_manager", "treaty_article_manager",
 ]);
 // Blocks inside an entry whose contents we need (everything else is skipped).
-const BLOCKS = new Set(["acquired_technologies", "prestige", "gdp", "provinces", "versions", "inputs"]);
+const BLOCKS = new Set(["acquired_technologies", "prestige", "gdp", "provinces", "versions", "inputs", "trade"]);
 
 self.onmessage = async ({ data: file }) => {
   try {
@@ -128,10 +128,16 @@ async function read(file) {
         out.states[e.id] = {
           country: e.country, region: e.region, arable_land: +e.arable_land || 0,
           provinces: numbers(e.provinces).reduce((n, x, i) => i % 2 ? n + x + 1 : n, 0),
+          // trade={ goods={ <good index>={ value=<n> ... } } }: < 0 imported, > 0 exported
+          // by the state's trade center; the index is the good's position in the goods list.
+          trade: tradeFlows(e.trade),
         };
         break;
       case "building_manager":
-        if (e.building && e.state) out.buildings.push({ state: e.state, building: e.building, levels: +e.levels || 0 });
+        if (e.building && e.state) out.buildings.push({
+          state: e.state, building: e.building, levels: +e.levels || 0,
+          ...(e.building === "building_trade_center" && { revenue: +e.trade_revenue || 0, profit: +e.profit_after_reserves || 0 }),
+        });
         break;
       case "new_combat_unit_manager":
         if (e.type) out.units.push({ country: e.country, type: e.type, manpower: +e.current_manpower || 0 });
@@ -161,6 +167,17 @@ async function read(file) {
   }
 }
 
+function tradeFlows(lines) {
+  const flows = {};
+  let good = null;
+  for (const l of lines || []) {
+    const g = /^(\d+)=\{$/.exec(l), v = /^value=(-?[\d.]+)/.exec(l);
+    if (g) good = +g[1];
+    else if (v && good != null) flows[good] = +v[1];
+  }
+  return flows;
+}
+
 // Time series like prestige={ ... channels={ 0={ values={ 179 179 ... } } } }:
 // the current value is the last number written.
 function lastNumber(lines) {
@@ -181,12 +198,13 @@ function summarize(o) {
   const stateInfo = {};
   for (const [id, s] of Object.entries(o.states)) {
     const c = byId[s.country]; if (!c) continue;
-    const st = { region: s.region, arable_land: s.arable_land, provinces: s.provinces, buildings: {} };
+    const st = { region: s.region, arable_land: s.arable_land, provinces: s.provinces, buildings: {}, trade: s.trade };
     stateInfo[id] = st; c.states.push(st);
   }
   for (const b of o.buildings) {
     const st = stateInfo[b.state]; if (!st || !b.levels) continue;
     st.buildings[b.building] = (st.buildings[b.building] || 0) + b.levels;
+    if (b.building === "building_trade_center") st.tradeCenter = { revenue: (st.tradeCenter?.revenue || 0) + b.revenue, profit: (st.tradeCenter?.profit || 0) + b.profit };
   }
   for (const u of o.units) {
     const c = byId[u.country]; if (!c) continue;
