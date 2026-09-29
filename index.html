@@ -282,6 +282,21 @@
     #dropHint { position: fixed; inset: 12px; z-index: 50; display: none; align-items: center; justify-content: center; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-family: Georgia, serif; font-size: 1.6em; color: var(--accent); pointer-events: none; text-align: center; }
     body.dragging #dropHint { display: flex; }
 
+    /* "Load your campaign" dialog: how to melt a save on pdx.tools, then drop it here. */
+    #saveDialog { margin: auto; /* the global margin reset would otherwise pin it to the top-left */ max-width: 520px; width: calc(100% - 32px); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); padding: 22px 24px 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    #saveDialog::backdrop { background: rgba(0,0,0,0.45); }
+    #saveDialog h2 { font-size: 1.35em; margin-bottom: 4px; }
+    #saveDialog .lede { color: var(--muted); font-size: 0.9em; margin-bottom: 14px; line-height: 1.45; }
+    #saveDialog ol { padding-left: 1.3em; font-size: 0.92em; line-height: 1.5; }
+    #saveDialog li { margin-bottom: 8px; }
+    #saveDialog li code { font-size: 0.9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+    #saveDialog a { color: var(--accent); }
+    .save-drop { margin: 14px 0 10px; border: 2px dashed var(--accent); border-radius: 12px; padding: 22px 16px; text-align: center; cursor: pointer; color: var(--accent); font-family: Georgia, serif; font-size: 1.1em; }
+    .save-drop:hover, .save-drop.over { background: var(--accent-soft); }
+    .save-drop small { display: block; font-family: inherit; font-size: 0.72em; color: var(--muted); margin-top: 4px; }
+    #saveDialog .credit { font-size: 0.8em; color: var(--muted); line-height: 1.45; }
+    #saveDialog .close { position: absolute; top: 12px; right: 12px; font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
 
@@ -360,12 +375,24 @@
       <button data-view="economyView">Economy</button>
     </div>
     <div class="save-ctl" id="saveCtl">
-      <button id="loadSave" title="Melt your save on pdx.tools first, then load the melted .v3 file here. It's read in your browser; nothing is uploaded.">Load a melted save…</button>
+      <button id="loadSave" title="See your own campaign in every tab">Load your save…</button>
       <input type="file" id="saveFile" accept=".v3" hidden>
       <span class="status" id="saveStatus"></span>
     </div>
     <div class="current" id="current"></div>
   </header>
+  <dialog id="saveDialog" aria-labelledby="saveDialogTitle">
+    <button type="button" class="close" data-close-dialog aria-label="Close">✕</button>
+    <h2 id="saveDialogTitle">Load your campaign</h2>
+    <p class="lede">See your own game in every tab — techs, armies, units, buildings, resources, prestige and GDP — instead of the 1836 start.</p>
+    <ol>
+      <li>Find your save. It's in <code>Documents / Paradox Interactive / Victoria 3 / save games</code>, a <code>.v3</code> file.</li>
+      <li>Victoria 3 saves are binary, so first open it on <a href="https://pdx.tools" target="_blank" rel="noopener">pdx.tools</a> and click <b>Melt</b>. That downloads a readable copy ending in <code>_melted.v3</code>.</li>
+      <li>Drop that melted file here:</li>
+    </ol>
+    <div class="save-drop" id="saveDrop" role="button" tabindex="0">Drop the melted save here, or click to choose it<small>It's read right here in your browser — nothing is uploaded.</small></div>
+    <p class="credit">Melting is done by <a href="https://pdx.tools" target="_blank" rel="noopener">pdx.tools</a>, the free save analyzer for Paradox games — thank you! If you like this, check it out: it has lots more for your saves.</p>
+  </dialog>
   <div id="dropHint">Drop a melted Victoria 3 save<br><small style="font-size:0.55em">read in your browser, nothing is uploaded</small></div>
 
   <aside>
@@ -1030,12 +1057,13 @@
     function setSaveStatus(html, err = false) { saveStatus.innerHTML = html; saveStatus.classList.toggle("err", err); }
     function loadSaveFile(file) {
       if (!file) return;
+      if (saveDialog.open) saveDialog.close();
       setSaveStatus(`Reading ${esc(file.name)}… <span class="bar"><i id="saveBar"></i></span>`);
       const worker = new Worker(asset("save-worker.js"));
       worker.onmessage = async ({ data: m }) => {
         if (m.type === "progress") { const bar = document.getElementById("saveBar"); if (bar) bar.style.width = Math.round(m.done * 100) + "%"; return; }
         worker.terminate();
-        if (m.type === "error") { setSaveStatus(esc(m.message), true); return; }
+        if (m.type === "error") { setSaveStatus(`${esc(m.message)} <a href="#" data-open-save-help>How?</a>`, true); return; }
         await applySave(m.summary, file.name);
       };
       worker.onerror = e => { worker.terminate(); setSaveStatus("Couldn't read that file: " + esc(e.message || "unknown error"), true); };
@@ -1101,9 +1129,24 @@
       renderSidebar(); render();
     }
 
-    document.getElementById("loadSave").addEventListener("click", () => document.getElementById("saveFile").click());
+    const saveDialog = document.getElementById("saveDialog");
+    document.getElementById("loadSave").addEventListener("click", () => saveDialog.showModal());
+    saveDialog.addEventListener("click", e => {
+      // Close on ✕ or a click on the backdrop (outside the dialog's box).
+      const r = saveDialog.getBoundingClientRect();
+      const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      if (e.target.closest("[data-close-dialog]") || (e.target === saveDialog && outside)) saveDialog.close();
+    });
+    const saveDrop = document.getElementById("saveDrop");
+    saveDrop.addEventListener("click", () => document.getElementById("saveFile").click());
+    saveDrop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById("saveFile").click(); } });
+    saveDrop.addEventListener("dragover", e => { e.preventDefault(); saveDrop.classList.add("over"); });
+    saveDrop.addEventListener("dragleave", () => saveDrop.classList.remove("over"));
     document.getElementById("saveFile").addEventListener("change", e => { loadSaveFile(e.target.files[0]); e.target.value = ""; });
-    saveStatus.addEventListener("click", e => { if (e.target.id === "back1836") backTo1836(); });
+    saveStatus.addEventListener("click", e => {
+      if (e.target.id === "back1836") backTo1836();
+      if (e.target.closest("[data-open-save-help]")) { e.preventDefault(); saveDialog.showModal(); }
+    });
     // Dropping a file anywhere on the page loads it.
     let dragDepth = 0;
     addEventListener("dragenter", e => { if (e.dataTransfer?.types.includes("Files")) { dragDepth++; document.body.classList.add("dragging"); } });

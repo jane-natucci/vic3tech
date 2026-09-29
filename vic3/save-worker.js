@@ -39,7 +39,15 @@ async function read(file) {
     ships: [],          // { fleet, version }
   };
   let section = null, entry = null, block = null, blockLines = [];
-  let bytes = 0, lastReport = 0, head = true;
+  let bytes = 0, lastReport = 0;
+
+  // A melted save is text right after its one-line "SAV..." header; a binary
+  // (or zipped binary) save has control bytes there. The header line itself
+  // is short, so look at the first few hundred bytes, not the first line.
+  const start = new Uint8Array(await file.slice(0, 512).arrayBuffer());
+  if (start.some(b => b === 0 || (b < 9) || (b > 13 && b < 32))) {
+    throw new Error("This save is still binary. Melt it on pdx.tools first (open the save there, then \"Melt\").");
+  }
 
   const reader = file.stream().pipeThrough(new TextDecoderStream()).getReader();
   let rest = "";
@@ -57,13 +65,6 @@ async function read(file) {
   return summarize(out);
 
   function handle(line) {
-    if (head) {
-      head = false;
-      // Binary saves start "SAV01<type>...", then non-text bytes; melted ones are text after the header line.
-      if (line.startsWith("SAV") && /[\u0000-\u0008\u000e-\u001f]/.test(line.slice(24, 200))) {
-        throw new Error("This save is still binary. Melt it on pdx.tools first (open the save there, then \"Melt\").");
-      }
-    }
     if (line[0] !== "\t") {                                   // top level
       const m = /^([A-Za-z0-9_]+)=(.*)/.exec(line);
       if (m) { section = SECTIONS.has(m[1]) ? m[1] : null; if (m[1] === "date") out.date = m[2].trim(); }
