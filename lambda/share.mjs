@@ -48,14 +48,20 @@ const fail = what => { throw new Error(`bad ${what}`); };
 const str = (v, re, what) => (typeof v === "string" && re.test(v) ? v : fail(what));
 const num = (v, what) => (typeof v === "number" && Number.isFinite(v) ? v : fail(what));
 const optNum = (v, what) => (v == null ? null : num(v, what));
-const id = v => str(v, /^[A-Za-z0-9_:.\-]{1,80}$/, "id");
+// Names that mean something special on JavaScript objects. The page uses
+// these ids and keys to look things up in plain objects, so a save claiming
+// a tech or building called "constructor" could confuse it -- no code runs,
+// but refuse them anyway. Real game ids never use them.
+const RESERVED = new Set(["__proto__", "constructor", "prototype"]);
+const notReserved = (v, what) => (RESERVED.has(v) ? fail(`reserved ${what}`) : v);
+const id = v => notReserved(str(v, /^[A-Za-z0-9_:.\-]{1,80}$/, "id"), "id");
 const tag = v => (v == null ? null : str(v, /^[A-Z0-9_]{2,4}$/, "tag"));
 const list = (v, max, fn, what) => (Array.isArray(v) && v.length <= max ? v.map(fn) : fail(what));
 const numMap = (v, max, keyRe, what) => {
   if (!v || typeof v !== "object" || Array.isArray(v)) fail(what);
   const entries = Object.entries(v);
   if (entries.length > max) fail(what);
-  return Object.fromEntries(entries.map(([k, n]) => [str(k, keyRe, what), num(n, what)]));
+  return Object.fromEntries(entries.map(([k, n]) => [notReserved(str(k, keyRe, what), what), num(n, what)]));
 };
 
 // A real save has hundreds of countries with states; refuse near-empty
@@ -92,9 +98,9 @@ function clean(s) {
       since: t.since == null ? null : str(String(t.since), /^[\d.]{1,20}$/, "since"),
       days: optNum(t.days, "days"),
       articles: list(t.articles, 50, a => ({
-        article: str(a.article, /^[a-z_]{1,60}$/, "article"),
+        article: notReserved(str(a.article, /^[a-z_]{1,60}$/, "article"), "article"),
         source: tag(a.source), target: tag(a.target),
-        goods: a.goods == null ? null : str(a.goods, /^[a-z_]{1,40}$/, "goods"),
+        goods: a.goods == null ? null : notReserved(str(a.goods, /^[a-z_]{1,40}$/, "goods"), "goods"),
         quantity: optNum(a.quantity, "quantity"),
       }), "articles"),
     }), "treaties"),
