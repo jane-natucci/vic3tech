@@ -148,7 +148,27 @@
       background: var(--panel);
     }
     header h1 { font-size: 1.35em; letter-spacing: -0.01em; }
+    .brand { position: relative; }
     header h1 small { color: var(--muted); font-size: 0.7em; margin-left: 6px; }
+    /* The date is also the button for recent saves (the menu below it). */
+    header h1 .era { font: inherit; border: none; background: none; color: inherit; padding: 0; cursor: pointer; }
+    header h1 .era small.caret { margin-left: 3px; font-size: 0.55em; }
+    header h1 .era:hover small, header h1 .era[aria-expanded=true] small { color: var(--accent); }
+    .recent { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; width: 380px; max-width: calc(100vw - 24px); max-height: 70vh; overflow-y: auto;
+              font-size: 0.85em; background: var(--panel); color: var(--ink);
+              border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); padding: 6px; }
+    .recent h4 { font-size: 0.8em; font-weight: normal; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 8px 8px 4px; }
+    .recent .row { display: flex; align-items: center; border-radius: 8px; }
+    .recent .row:hover, .recent .row.on { background: var(--accent-soft); }
+    .recent .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; font: inherit; text-align: left; border: none; background: none; color: inherit; padding: 7px 8px; cursor: pointer; }
+    .recent .open .flag, .recent .open .none { font-size: 1.5em; flex: none; width: 1.4em; text-align: center; }
+    .recent .open .none { font-size: 0.75em; color: var(--muted); }
+    .recent .open span { min-width: 0; }
+    .recent .open b { font-family: Georgia, serif; font-weight: normal; font-size: 1.1em; }
+    .recent .open i { display: block; font-style: normal; color: var(--muted); font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recent .del { flex: none; font: inherit; border: none; background: none; color: var(--muted); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; margin-right: 4px; }
+    .recent .del:hover { color: var(--accent); background: var(--bg); }
+    .recent .empty { color: var(--muted); padding: 4px 8px 8px; line-height: 1.45; }
     /* Which commit is deployed, like Achievement Chains' top bar. */
     .build { font-size: 0.72em; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .build:hover { color: var(--accent); border-color: var(--accent); }
@@ -473,7 +493,10 @@
 </head>
 <body>
   <header>
-    <h1>Victoria 3 <small id="eraLabel">1836 start</small></h1>
+    <div class="brand">
+      <h1>Victoria 3 <button type="button" class="era" id="eraBtn" aria-haspopup="true" aria-expanded="false" title="Recent saves"><small id="eraLabel">1836 start</small><small class="caret">▾</small></button></h1>
+      <div class="recent" id="recentMenu" hidden></div>
+    </div>
     <!-- deploy.sh fills in the commit; a local preview has no build to show. -->
     <a class="build" id="buildLink" href="https://github.com/jane-natucci/vic3tech/commit/__BUILD_SHA__" target="_blank" rel="noopener" title="View the deployed source commit on GitHub"><span class="long">Build </span>__BUILD_LABEL__</a>
     <div class="tabs" id="tabs">
@@ -1395,9 +1418,8 @@
       state.saveInfo = { date: sum.date, player: sum.player, fileName };
       state.saveTrade = { treaties: sum.treaties || [], prices: sum.prices || [] };
       state.saveSummary = sum; state.sharedId = sharedId;
-      const [y, mo, d] = sum.date.split(".").map(Number);
       // Just the date: the save strip under the header already says "Your save".
-      document.getElementById("eraLabel").textContent = new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+      document.getElementById("eraLabel").textContent = gameDate(sum.date);
       // A shared link keeps the country it was shared with (#TAG); otherwise pin the player.
       const linked = sharedId ? parseHash().tag : null;
       if (linked && state.byTag[linked]) state.pinned = linked;
@@ -1406,6 +1428,12 @@
       renderSaveBanner();
       state.preview = null;
       renderSidebar(); render();
+      rememberSave(sum, fileName, sharedId);
+    }
+    // "1841.3.8" -> "8 Mar 1841"
+    function gameDate(date) {
+      const [y, mo, d] = date.split(".").map(Number);
+      return new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
     }
 
     function renderSaveBanner(extra = "") {
@@ -1427,6 +1455,7 @@
         const res = await fetch("/api/share", { method: "POST", headers: { "content-type": "application/octet-stream" }, body: gz });
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
         const { id } = await res.json();
+        markShared(state.historyKey, id);
         const url = `${location.origin}/?s=${id}#${state.pinned}`;
         let copied = false;
         try { await navigator.clipboard.writeText(url); copied = true; } catch {}
@@ -1451,6 +1480,113 @@
       }
     }
 
+    // --- Recent saves --------------------------------------------------------------
+    // Every save that loads -- from a file or a shared link -- is kept in this
+    // browser's IndexedDB as its gzipped summary (60-150 KB, vs 5 MB for all
+    // of localStorage), so clicking the date in the header reopens it without
+    // re-reading the file. Newest RECENT_MAX are kept. If storage isn't
+    // available (private windows, blocked site data) the page works as before,
+    // just without a list.
+    const RECENT_MAX = 20;
+    let recentDb = null;
+    function openRecentDb() {
+      return recentDb ??= new Promise((resolve, reject) => {
+        const req = indexedDB.open("vic3tech", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("saves", { keyPath: "key" });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function recentStore(mode, fn) {
+      const db = await openRecentDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("saves", mode), req = fn(tx.objectStore("saves"));
+        tx.oncomplete = () => resolve(req?.result);
+        tx.onerror = tx.onabort = () => reject(tx.error);
+      });
+    }
+    const recentList = () => recentStore("readonly", s => s.getAll()).then(all => all.sort((a, b) => b.loadedAt - a.loadedAt));
+    const gzip = async text => new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());
+    const gunzip = bytes => new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).json();
+
+    // One entry per shared link, and per file + in-game date + player (loading
+    // the same save again just moves it to the top).
+    async function rememberSave(sum, fileName, sharedId) {
+      const key = sharedId ? `s:${sharedId}` : `f:${fileName}|${sum.date}|${sum.player || ""}`;
+      state.historyKey = key;
+      try {
+        const old = await recentStore("readonly", s => s.get(key));
+        const entry = {
+          key, date: sum.date, player: sum.player || null, playerName: sum.player ? state.byTag[sum.player]?.name || sum.player : null,
+          fileName, sharedId: sharedId || old?.sharedId || null, loadedAt: Date.now(), gz: old?.gz || await gzip(JSON.stringify(sum)),
+        };
+        await recentStore("readwrite", s => s.put(entry));
+        const stale = (await recentList()).slice(RECENT_MAX);
+        if (stale.length) await recentStore("readwrite", s => stale.forEach(e => s.delete(e.key)));
+      } catch (e) { console.warn("Couldn't remember this save:", e); }
+    }
+    // A save you loaded and then shared keeps its link, shown in the list.
+    async function markShared(key, sharedId) {
+      if (!key) return;
+      try {
+        const entry = await recentStore("readonly", s => s.get(key));
+        if (entry) await recentStore("readwrite", s => s.put({ ...entry, sharedId }));
+      } catch {}
+    }
+
+    const eraBtn = document.getElementById("eraBtn"), recentMenu = document.getElementById("recentMenu");
+    async function openRecentMenu() {
+      let list = [];
+      try { list = await recentList(); } catch (e) { console.warn("No saved history:", e); }
+      const ago = t => {
+        const m = (Date.now() - t) / 6e4;
+        return m < 1 ? "just now" : m < 60 ? `${Math.round(m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      };
+      const who = e => {
+        const c = e.player && (state.byTag[e.player] || state.base?.countries.find(x => x.tag === e.player));
+        return c ? flagHtml(c) : `<span class="none">${esc(e.player || "–")}</span>`;
+      };
+      recentMenu.innerHTML =
+        `<div class="row${state.saveInfo ? "" : " on"}"><button class="open" data-recent="1836"><span class="flag">📜</span><span><b>1836 start</b><i>The game's starting date, for every country</i></span></button></div>` +
+        `<h4>Recent saves</h4>` +
+        (list.length ? list.map(e => `<div class="row${e.key === state.historyKey && state.saveInfo ? " on" : ""}">
+            <button class="open" data-recent="${esc(e.key)}">${who(e)}<span><b>${esc(gameDate(e.date))}</b>${e.playerName ? ` · ${esc(e.playerName)}` : ""}
+              <i>${e.fileName ? esc(e.fileName) : "Shared link"}${e.fileName && e.sharedId ? " · shared" : ""} · ${ago(e.loadedAt)}</i></span></button>
+            <button class="del" data-forget="${esc(e.key)}" title="Remove from this list" aria-label="Remove from this list">✕</button></div>`).join("")
+          : `<p class="empty">Saves you load or open from a shared link show up here, kept in this browser only.</p>`);
+      recentMenu.hidden = false; eraBtn.setAttribute("aria-expanded", "true");
+    }
+    function closeRecentMenu() { recentMenu.hidden = true; eraBtn.setAttribute("aria-expanded", "false"); }
+    async function openRecent(key) {
+      closeRecentMenu();
+      if (key === "1836") { backTo1836(); return; }
+      try {
+        const e = await recentStore("readonly", s => s.get(key));
+        if (!e) throw new Error("it's no longer stored");
+        setSaveStatus("Opening…");
+        const sum = await gunzip(e.gz);
+        // A shared link's entry gets its ?s= back, so reloading keeps it; your own file doesn't have one.
+        const params = new URLSearchParams(location.search);
+        if (e.fileName) params.delete("s"); else params.set("s", e.sharedId);
+        const query = params.toString();
+        history.replaceState(null, "", location.pathname + (query ? "?" + query : "") + location.hash);
+        await applySave(sum, e.fileName, e.fileName ? null : e.sharedId);
+      } catch (err) {
+        console.error(err);
+        setSaveStatus(`Couldn't open this save: ${esc(err.message)}.`, true);
+      }
+    }
+    eraBtn.addEventListener("click", e => { e.stopPropagation(); recentMenu.hidden ? openRecentMenu() : closeRecentMenu(); });
+    recentMenu.addEventListener("click", async e => {
+      e.stopPropagation();
+      const forget = e.target.closest("[data-forget]")?.dataset.forget;
+      if (forget) { try { await recentStore("readwrite", s => s.delete(forget)); } catch {} openRecentMenu(); return; }
+      const key = e.target.closest("[data-recent]")?.dataset.recent;
+      if (key) openRecent(key);
+    });
+    document.addEventListener("click", () => { if (!recentMenu.hidden) closeRecentMenu(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !recentMenu.hidden) { closeRecentMenu(); eraBtn.focus(); } });
+
     function useCountries(countries) {
       state.data.countries = countries;
       state.byTag = {};
@@ -1461,7 +1597,7 @@
       const b = state.base; if (!b) return;
       useCountries(b.countries);
       economy.countries = b.econCountries; economy.resourceIds = b.resourceIds;
-      state.saveInfo = null; state.saveTrade = null; state.saveSummary = null; state.sharedId = null; state.base = null; state.preview = null;
+      state.saveInfo = null; state.saveTrade = null; state.saveSummary = null; state.sharedId = null; state.historyKey = null; state.base = null; state.preview = null;
       if (location.search) history.replaceState(null, "", location.pathname + location.hash);
       if (!state.byTag[state.pinned]) state.pinned = b.pinned;
       document.getElementById("eraLabel").textContent = "1836 start";
