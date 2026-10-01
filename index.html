@@ -23,9 +23,43 @@
   <meta name="twitter:description" content="Which countries start ahead in Victoria 3? Tech tree, armies, units, buildings and resources for every nation in 1836.">
   <meta name="twitter:image" content="https://vic3tech.jane.berlin/vic3/og-image.jpg">
   <link rel="icon" type="image/svg+xml" href="/vic3/favicon.svg?v=__DATA_VERSION__">
+  <script>
+    // Runs before the page draws, so neither of these flashes.
+    // 1. Theme: the visitor's pick from the ☀️/🌙 button, else the system's.
+    try {
+      const t = localStorage.getItem("vic3-theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch {}
+    // 2. Flags: Windows has no flag emoji (🇫🇷 shows as the letters "FR"). If
+    // the device can draw colour emoji but not flags -- or ?flags=twemoji asks
+    // for it, for testing -- use the Twemoji flag font for flag characters
+    // only. Detection after country-flag-emoji-polyfill (MIT, TalkJS): a
+    // colour glyph ignores fillStyle, so drawing it in white and in black
+    // gives the same, non-black pixel.
+    (() => {
+      const colourGlyph = text => {
+        const c = document.createElement("canvas"); c.width = c.height = 1;
+        const x = c.getContext("2d", { willReadFrequently: true });
+        x.textBaseline = "top"; x.font = '100px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.scale(0.01, 0.01);
+        const draw = colour => { x.clearRect(0, 0, 100, 100); x.fillStyle = colour; x.fillText(text, 0, 0); return x.getImageData(0, 0, 1, 1).data.join(","); };
+        const white = draw("#fff"), black = draw("#000");
+        return white === black && !black.startsWith("0,0,0,");
+      };
+      let force = false;
+      try { force = new URLSearchParams(location.search).get("flags") === "twemoji"; } catch {}
+      if (force || (colourGlyph("\u{1F60A}") && !colourGlyph("\u{1F1E8}\u{1F1ED}"))) {
+        document.documentElement.classList.add("twemoji-flags");
+        const style = document.createElement("style");
+        style.textContent = `@font-face { font-family: "Twemoji Country Flags"; font-display: swap;
+          unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+          src: url("/vic3/fonts/TwemojiCountryFlags.woff2") format("woff2"); }`;
+        document.head.appendChild(style);
+      }
+    })();
+  </script>
   <style>
     :root {
-      color-scheme: light dark;
+      color-scheme: light;
       --bg: #f4efe4;
       --panel: #fbf8f1;
       --ink: #231d14;
@@ -44,8 +78,11 @@
       --frig: #7a9cb8;
       --gov: #6d4f82;
     }
+    /* Dark: follows the system unless the visitor picked a theme with the
+       header's ☀️/🌙 button (stored, applied as data-theme on <html>). */
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
         --bg: #17140f;
         --panel: #201c16;
         --ink: #eee5d3;
@@ -65,8 +102,31 @@
         --gov: #a98bc0;
       }
     }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #17140f;
+      --panel: #201c16;
+      --ink: #eee5d3;
+      --muted: #a1937b;
+      --line: #3a3228;
+      --accent: #e0876f;
+      --accent-soft: #3b231c;
+      --node: #27221b;
+      --arrow: #4d4336;
+      --arrow-on: #c9b692;
+      --inf: #93a86f;
+      --cav: #d3a258;
+      --art: #d8735c;
+      --other: #8d8577;
+      --sotl: #7ea4c8;
+      --frig: #4f6f8d;
+      --gov: #a98bc0;
+    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html.twemoji-flags body { font-family: "Twemoji Country Flags", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+    .theme-toggle { flex: none; font: inherit; font-size: 1em; line-height: 1; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: transparent; cursor: pointer; }
+    .theme-toggle:hover { border-color: var(--accent); }
     html, body { height: 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -102,7 +162,7 @@
     /* Takes whatever room is left on the header row and wraps its own text,
        rather than the whole block dropping to a new row when the stats line
        grows (a loaded save adds prestige and GDP). */
-    .current { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.95em; flex: 1 1 260px; min-width: 0; }
+    .current { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.95em; flex: 1 1 140px; min-width: 0; }
     .current > div { min-width: 0; }
     .current .cname, .current .cstats { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .current .cstats { font-size: 0.8em; color: var(--muted); }
@@ -344,7 +404,7 @@
 
     /* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
        mobilization" -> "Units", so the header stays one row. */
-    @media (max-width: 1280px) { .tabs .long { display: none; } }
+    @media (max-width: 1280px) { .tabs .long, .build .long { display: none; } header { column-gap: 16px; } }
 
     /* Only shown on phones (see below). */
     .picker-head, .sheet-close { display: none; }
@@ -415,7 +475,7 @@
   <header>
     <h1>Victoria 3 <small id="eraLabel">1836 start</small></h1>
     <!-- deploy.sh fills in the commit; a local preview has no build to show. -->
-    <a class="build" id="buildLink" href="https://github.com/jane-natucci/vic3tech/commit/__BUILD_SHA__" target="_blank" rel="noopener" title="View the deployed source commit on GitHub">Build __BUILD_LABEL__</a>
+    <a class="build" id="buildLink" href="https://github.com/jane-natucci/vic3tech/commit/__BUILD_SHA__" target="_blank" rel="noopener" title="View the deployed source commit on GitHub"><span class="long">Build </span>__BUILD_LABEL__</a>
     <div class="tabs" id="tabs">
       <button data-view="techView" class="on">Technology</button>
       <button data-view="armyView">Armies<span class="long"> &amp; navies</span></button>
@@ -427,6 +487,7 @@
       <button id="loadSave" title="See your own campaign in every tab">Load your save…</button>
       <input type="file" id="saveFile" accept=".v3" hidden>
     </div>
+    <button type="button" class="theme-toggle" id="themeToggle"></button>
     <div class="current" id="current"></div>
     <div class="save-banner" id="saveStatus" role="status"></div>
   </header>
@@ -496,7 +557,8 @@
 
     <footer>
       Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>; Victoria 3 is © Paradox Interactive.
-      Modern emoji flags are only used to tell countries apart.
+      Modern emoji flags are only used to tell countries apart (on devices without flag emoji, flag images from
+      <a href="https://github.com/twitter/twemoji">Twemoji</a>, CC BY 4.0).
       Also see <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> and
       <a href="https://achievements.jane.berlin">achievement chains</a> for Victoria 3.
     </footer>
@@ -1436,6 +1498,26 @@
       e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
       loadSaveFile(e.dataTransfer.files[0]);
     });
+
+    // --- Theme toggle ------------------------------------------------------------
+    // Starts from the system theme; a click picks the other one explicitly and
+    // remembers it (the <head> script applies it before the next page draws).
+    const themeToggle = document.getElementById("themeToggle");
+    const systemDark = matchMedia("(prefers-color-scheme: dark)");
+    const currentTheme = () => document.documentElement.dataset.theme || (systemDark.matches ? "dark" : "light");
+    function renderThemeToggle() {
+      const next = currentTheme() === "dark" ? "light" : "dark";
+      themeToggle.textContent = next === "dark" ? "🌙" : "☀️";
+      themeToggle.title = themeToggle.ariaLabel = `Switch to the ${next} theme`;
+    }
+    themeToggle.addEventListener("click", () => {
+      const next = currentTheme() === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem("vic3-theme", next); } catch {}
+      renderThemeToggle();
+    });
+    systemDark.addEventListener("change", renderThemeToggle);
+    renderThemeToggle();
 
     // --- Events --------------------------------------------------------------
     // Phones: no hover. iOS Safari also swallows a tap whose simulated

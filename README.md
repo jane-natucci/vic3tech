@@ -51,3 +51,5 @@ Local deploys use the `personal` AWS profile by default (`AWS_PROFILE` overrides
 ## Credits
 
 Unofficial fan project. Victoria 3 and all its data, art and text are © Paradox Interactive; this project isn't affiliated with or endorsed by Paradox. The code in this repository is MIT-licensed.
+
+On devices without flag emoji (e.g. Windows), flags are drawn with the [Twemoji](https://github.com/twitter/twemoji) country-flag font, © Twitter and contributors, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — see `vic3/fonts/LICENSE-TwemojiCountryFlags.md`.
