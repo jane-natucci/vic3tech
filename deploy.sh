@@ -66,9 +66,10 @@ if [ "${1:-}" != "--code-only" ]; then
   aws s3 cp eu4/data.json "s3://${bucket}/eu4/data.json" --only-show-errors \
     --cache-control "no-cache" --content-type "application/json"
 fi
+# (s3api, not "s3 cp": cp reads a destination ending in / as a folder.)
 for key in eu4/ eu4/index.html; do
-  aws s3 cp eu4/index.html "s3://${bucket}/${key}" --only-show-errors \
-    --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+  aws s3api put-object --bucket "$bucket" --key "$key" --body eu4/index.html \
+    --cache-control "no-cache" --content-type "text/html; charset=utf-8" >/dev/null
 done
 aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
