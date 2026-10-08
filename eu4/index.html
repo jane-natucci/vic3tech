@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EU4 Unit Pips by Military Tech – Infantry, Cavalry, Artillery &amp; Adm/Dip Tech</title>
+  <meta name="description" content="How Europa Universalis IV units get stronger: every infantry, cavalry and artillery unit's pips by military tech level, unit groups compared (Western, Ottoman, Eastern, Muslim…), and what each adm, dip and mil tech level adds. Free, built from the game files.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://vic3tech.jane.berlin/eu4/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="EU4 Unit Pips by Military Tech">
+  <meta property="og:description" content="Every EU4 land unit's pips by military tech level, unit groups side by side, and what each adm, dip and mil tech adds — straight from the game files.">
+  <meta property="og:url" content="https://vic3tech.jane.berlin/eu4/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="EU4 Unit Pips by Military Tech">
+  <meta name="twitter:description" content="Every EU4 land unit's pips by military tech level, unit groups side by side, and what each adm, dip and mil tech adds.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%94%3C/text%3E%3C/svg%3E">
+  <!-- Everything this page needs is in eu4/ (this file, extract.rb and the
+       generated data.json), sharing nothing with the Vic3 page, so the
+       folder can move to another app as is. -->
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4efe4; --panel: #fbf8f1; --ink: #231d14; --muted: #7a6d58; --line: #d9cfbc;
+      --accent: #8a2c1f; --accent-soft: #f1ddd6;
+      --fire: #c2562f; --shock: #3f6f9a; --morale: #6b7f4e;
+      --s1: #8a2c1f; --s2: #2f6f9a; --s3: #6b7f4e; --s4: #b2803a; --s5: #6d4f82; --s6: #3d8b85;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #17140f; --panel: #201c16; --ink: #eee5d3; --muted: #a1937b; --line: #3a3228;
+        --accent: #e0876f; --accent-soft: #3b231c;
+        --fire: #e07a50; --shock: #79a8d4; --morale: #9fb57a;
+        --s1: #e0876f; --s2: #79a8d4; --s3: #9fb57a; --s4: #d3a258; --s5: #b195c8; --s6: #6fc2bb;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--ink); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: normal; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    header h1 { font-size: 1.35em; }
+    header h1 small { color: var(--muted); font-size: 0.7em; margin-left: 6px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chips button { font: inherit; font-size: 0.88em; border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 5px 13px; border-radius: 999px; cursor: pointer; }
+    .chips button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .chips.multi button.on { background: var(--accent-soft); color: var(--ink); border-color: var(--c, var(--accent)); box-shadow: inset 0 0 0 1px var(--c, var(--accent)); }
+    main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 60px; }
+    section { margin-bottom: 34px; }
+    section > h2 { font-size: 1.3em; margin-bottom: 4px; }
+    .note { color: var(--muted); font-size: 0.88em; margin-bottom: 12px; max-width: 900px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+    .card h3 { font-size: 1.05em; margin-bottom: 6px; }
+    svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+    svg.chart text { fill: var(--muted); font-size: 10px; }
+    svg.chart .grid line { stroke: var(--line); }
+    svg.chart .series { fill: none; stroke-width: 2; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82em; color: var(--muted); margin-top: 4px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+    /* Unit lanes: one row per unit, positioned on the mil tech axis. */
+    .lanes { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 14px; overflow-x: auto; }
+    .axis, .unit { display: grid; grid-template-columns: 360px repeat(33, minmax(14px, 1fr)); align-items: center; min-width: 900px; }
+    .axis { font-size: 0.72em; color: var(--muted); position: sticky; top: 0; background: var(--panel); padding: 4px 0; border-bottom: 1px solid var(--line); }
+    .axis span { text-align: center; }
+    .lane-title { font-family: Georgia, serif; font-size: 1.05em; margin: 12px 0 2px; }
+    .unit { padding: 3px 0; border-bottom: 1px dashed var(--line); font-size: 0.86em; }
+    .unit .name { display: flex; align-items: center; gap: 8px; min-width: 0; padding-right: 10px; }
+    .unit .name .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .unit .name small { color: var(--muted); }
+    .unit .bar { height: 8px; border-radius: 4px; background: var(--line); }
+    .unit.best .bar { background: var(--accent); }
+    .unit.best .n { font-weight: 600; }
+    .pipset { display: inline-grid; grid-template-columns: repeat(3, auto); gap: 1px 5px; font-size: 0.72em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .pipset b { font-weight: 600; }
+    .pip-f { color: var(--fire); } .pip-s { color: var(--shock); } .pip-m { color: var(--morale); }
+    .total { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .gain { color: var(--accent); font-size: 0.8em; }
+    .key { font-size: 0.82em; color: var(--muted); margin: 6px 0 0; }
+
+    table.levels { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    table.levels th, table.levels td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    table.levels th { color: var(--muted); font-weight: normal; }
+    table.levels td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tag { display: inline-block; font-size: 0.85em; padding: 1px 7px; margin: 1px 2px; border-radius: 999px; background: var(--accent-soft); }
+    .tag.eff { background: transparent; border: 1px solid var(--line); }
+    .err { padding: 40px; color: var(--accent); }
+    footer { max-width: 1280px; margin: 0 auto; padding: 0 20px 30px; font-size: 0.78em; color: var(--muted); }
+    footer a { color: inherit; }
+    @media (max-width: 760px) { header, main { padding-left: 12px; padding-right: 12px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EU4 tech <small id="version"></small></h1>
+    <div class="chips" id="tabs">
+      <button data-tab="units" class="on">Military units</button>
+      <button data-tab="tech">Adm / Dip / Mil tech</button>
+    </div>
+  </header>
+  <main id="app"></main>
+  <footer>Unofficial fan page. Data comes from the Europa Universalis IV game files<span id="footVersion"></span>; Europa Universalis IV is © Paradox Interactive.</footer>
+
+  <script>
+    const app = document.getElementById("app");
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const TYPES = ["infantry", "cavalry", "artillery"];
+    const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
+    const GROUP_NAMES = { western: "Western", eastern: "Eastern", ottoman: "Ottoman", muslim: "Muslim", indian: "Indian", chinese: "Chinese",
+      sub_saharan: "Sub-Saharan", nomad_group: "Nomadic", mesoamerican: "Mesoamerican", south_american: "South American",
+      north_american: "North American", high_american: "High American", aboriginal_tech: "Aboriginal", polynesian_tech: "Polynesian" };
+    // Effects the game's localisation doesn't name (or names oddly).
+    const EFFECT_NAMES = { infantry_fire: "Infantry fire", infantry_shock: "Infantry shock", cavalry_fire: "Cavalry fire", cavalry_shock: "Cavalry shock",
+      artillery_fire: "Artillery fire", artillery_shock: "Artillery shock", land_morale: "Land morale", military_tactics: "Military tactics",
+      combat_width: "Combat width", maneuver_value: "Maneuver", supply_limit: "Supply limit", sprite_level: "Unit sprite level",
+      naval_morale: "Naval morale", range: "Colonial range", trade_range: "Trade range", global_colonial_growth: "Colonial growth",
+      naval_engagement_width: "Naval engagement width", governing_capacity: "Governing capacity", allowed_idea_groups: "Idea groups",
+      administrative_efficiency: "Administrative efficiency", development_cost_modifier: "Development cost" };
+    const PERCENT = /efficiency|modifier|maintenance/;
+    const state = { tab: "units", group: "western", compare: ["western", "eastern", "ottoman", "muslim"] };
+    let D, NAMES;
+
+    // Compared groups get colours by their place in the selection, so no two clash.
+    const colorOf = g => SERIES[Math.max(0, state.compare.indexOf(g)) % SERIES.length];
+    const groupName = g => GROUP_NAMES[g] || g;
+    const effName = k => EFFECT_NAMES[k] || NAMES[k] || k.replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
+    const total = u => Object.values(u.pips).reduce((a, b) => a + b, 0);
+    const fmt = (k, v) => PERCENT.test(k) ? `${v > 0 ? "+" : ""}${Math.round(v * 100)}%` : (Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, ""));
+    const yearOf = level => D.techs.mil[level].year;
+    // Value of an effect at every level: the base (from the game's defines)
+    // plus every level so far -- except keys a level sets outright.
+    const cumulative = (cat, key) => {
+      const absolute = D.absolute.includes(key); let s = D.bases[key] || 0;
+      return D.techs[cat].map(t => (s = absolute ? (t.effects[key] ?? s) : s + (t.effects[key] || 0)));
+    };
+    // Units of a group and type (artillery is shared by every group).
+    const unitsOf = (group, type) => D.units.filter(u => u.type === type && (type === "artillery" ? !u.group : u.group === group));
+    // Best (most total pips) unit available at each mil tech level.
+    function bestByLevel(group, type) {
+      const units = unitsOf(group, type); let best = null;
+      return D.techs.mil.map(t => { for (const u of units) if (u.tech === t.level && (!best || total(u) > total(best))) best = u; return best; });
+    }
+
+    // --- Step chart (inline SVG) ------------------------------------------------
+    // series: [{ name, color, values: [per level] }]; x = level 0..n-1.
+    function chart(series, { height = 170, label = v => v, years = true } = {}) {
+      const W = 520, H = height, L = 34, R = 8, T = 8, B = years ? 30 : 18;
+      const n = series[0].values.length, all = series.flatMap(s => s.values).filter(v => v != null);
+      let lo = Math.min(0, ...all), hi = Math.max(...all); if (hi === lo) hi = lo + 1;
+      const x = i => L + (W - L - R) * i / (n - 1), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+      const ticks = [lo, lo + (hi - lo) / 2, hi];
+      let g = `<g class="grid">${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${esc(label(v))}</text>`).join("")}</g>`;
+      for (let i = 0; i < n; i += 4) g += `<text x="${x(i)}" y="${H - B + 12}" text-anchor="middle">${i}</text>` + (years ? `<text x="${x(i)}" y="${H - B + 23}" text-anchor="middle">${yearOf(i)}</text>` : "");
+      for (const s of series) {
+        let d = "", prev = null;
+        s.values.forEach((v, i) => { if (v == null) { prev = null; return; } d += prev == null ? `M${x(i)},${y(v)}` : `H${x(i)}V${y(v)}`; prev = v; });
+        d += prev != null ? `H${x(n - 1)}` : "";
+        g += `<path class="series" d="${d}" style="stroke:var(${s.color})"><title>${esc(s.name)}</title></path>`;
+      }
+      return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">${g}</svg>` +
+        (series.length > 1 ? `<div class="legend">${series.map(s => `<span><i style="background:var(${s.color})"></i>${esc(s.name)}</span>`).join("")}</div>` : "");
+    }
+
+    // --- Military units tab ----------------------------------------------------
+    function pipset(u, prev) {
+      const p = u.pips, d = k => prev ? p[k] - prev.pips[k] : 0;
+      const cell = (k, cls) => `<b class="${cls}" title="${k.replace(/_/g, " ")}${d(k) ? ` (${d(k) > 0 ? "+" : ""}${d(k)} vs previous best)` : ""}">${p[k]}</b>`;
+      return `<span class="pipset">${cell("offensive_fire", "pip-f")}${cell("offensive_shock", "pip-s")}${cell("offensive_morale", "pip-m")}${cell("defensive_fire", "pip-f")}${cell("defensive_shock", "pip-s")}${cell("defensive_morale", "pip-m")}</span>`;
+    }
+    function lanes(group) {
+      const axis = `<div class="axis"><span style="text-align:left">Mil tech / year</span>${D.techs.mil.map(t => `<span title="${t.year}">${t.level}</span>`).join("")}</div>`;
+      return `<div class="lanes">${axis}` + TYPES.map(type => {
+        const best = bestByLevel(group, type);
+        let prevBest = null;
+        const rows = unitsOf(group, type).sort((a, b) => a.tech - b.tech || total(b) - total(a)).map(u => {
+          const isBest = best.includes(u), gain = isBest && prevBest ? total(u) - total(prevBest) : null;
+          const html = `<div class="unit${isBest ? " best" : ""}"><span class="name"><span class="n" title="${esc(u.name)} · maneuver ${u.maneuver}">${esc(u.name)} <small>tech ${u.tech}</small></span>` +
+            `${pipset(u, isBest ? prevBest : null)}<span class="total">${total(u)}</span><span class="gain" style="width:2.2em">${gain ? `+${gain}` : ""}</span></span>` +
+            `<span class="bar" style="grid-column:${u.tech + 2} / -1" title="Available from mil tech ${u.tech} (${yearOf(u.tech)})"></span></div>`;
+          if (isBest) prevBest = u;
+          return html;
+        }).join("");
+        return `<div class="lane-title">${type[0].toUpperCase() + type.slice(1)}${type === "artillery" ? " <small style='color:var(--muted);font-size:0.75em'>(the same for every group)</small>" : ""}</div>${rows}`;
+      }).join("") + `<p class="key">Each unit's pips: <span class="pip-f">fire</span> · <span class="pip-s">shock</span> · <span class="pip-m">morale</span>, offensive on top, defensive below; then total pips. Bold units with a red bar are the strongest available from their tech on (most total pips), with <span class="gain">+N</span> pips over the previous one; the bar shows from which mil tech a unit can be recruited.</p></div>`;
+    }
+    function renderUnits() {
+      const pipCharts = TYPES.map(type => `<div class="card"><h3>${type[0].toUpperCase() + type.slice(1)}: best total pips</h3>` +
+        chart((type === "artillery" ? ["western"] : state.compare).map((g, i) => ({
+          name: type === "artillery" ? "All groups" : groupName(g), color: colorOf(g),
+          values: bestByLevel(g, type).map(u => u ? total(u) : null),
+        }))) + `</div>`).join("");
+      const mult = (keys, title) => `<div class="card"><h3>${title}</h3>` + chart(keys.map((k, i) => ({ name: effName(k), color: SERIES[i], values: cumulative("mil", k) })), { label: v => v.toFixed(1) }) + `</div>`;
+      app.innerHTML = `
+        <section>
+          <h2>How pips evolve</h2>
+          <p class="note">The strongest unit a group can recruit at each military tech level, by total pips (fire, shock and morale, offensive and defensive). Pick groups to compare.</p>
+          <div class="chips multi" id="compare">${D.groups.map(g => `<button data-g="${g}" class="${state.compare.includes(g) ? "on" : ""}" style="--c:var(${colorOf(g)})">${esc(groupName(g))}</button>`).join("")}</div>
+          <div class="grid" style="margin-top:12px">${pipCharts}</div>
+        </section>
+        <section>
+          <h2>What military tech multiplies</h2>
+          <p class="note">Pips decide which dice bonuses a unit has; these tech values multiply the damage it deals (and morale, tactics, width) — the same for every group. Cumulative values at each level.</p>
+          <div class="grid">
+            ${mult(["infantry_fire", "infantry_shock"], "Infantry damage")}
+            ${mult(["cavalry_fire", "cavalry_shock"], "Cavalry damage")}
+            ${mult(["artillery_fire", "artillery_shock"], "Artillery damage")}
+            ${mult(["land_morale", "military_tactics"], "Morale and tactics")}
+            ${mult(["combat_width"], "Combat width")}
+          </div>
+        </section>
+        <section>
+          <h2>Every unit, by tech</h2>
+          <div class="chips" id="group" style="margin-bottom:10px">${D.groups.map(g => `<button data-g="${g}" class="${g === state.group ? "on" : ""}">${esc(groupName(g))}</button>`).join("")}</div>
+          ${lanes(state.group)}
+        </section>`;
+    }
+
+    // --- Adm / Dip / Mil tab -----------------------------------------------------
+    function renderTech() {
+      const CAT = { adm: "Administrative", dip: "Diplomatic", mil: "Military" };
+      const sections = Object.entries(CAT).map(([cat, title]) => {
+        const keys = [...new Set(D.techs[cat].flatMap(t => Object.keys(t.effects)))].filter(k => k !== "sprite_level");
+        const cards = keys.map(k => {
+          const v = cumulative(cat, k);
+          return `<div class="card"><h3>${esc(effName(k))} <small style="color:var(--muted);font-size:0.75em">${fmt(k, v.at(-1))} at tech ${v.length - 1}</small></h3>` +
+            chart([{ name: effName(k), color: "--s1", values: v }], { height: 120, label: x => fmt(k, +x.toFixed(2)) }) + `</div>`;
+        }).join("");
+        const rows = D.techs[cat].map(t => {
+          const eff = Object.entries(t.effects).filter(([k]) => k !== "sprite_level").map(([k, v]) => `<span class="tag eff">${esc(effName(k))} ${v > 0 && !PERCENT.test(k) ? "+" : ""}${fmt(k, v)}</span>`).join("");
+          const un = [...t.enables, ...t.flags].map(k => `<span class="tag">${esc(NAMES[k] || k.replace(/_/g, " "))}</span>`);
+          const shownUnlocks = un.length > 14 ? un.slice(0, 14).join("") + `<span class="tag">+${un.length - 14} more</span>` : un.join("");
+          return `<tr><td class="num">${t.level}</td><td class="num">${t.year}</td><td>${eff}</td><td>${shownUnlocks}</td></tr>`;
+        }).join("");
+        return `<section><h2>${title} technology</h2>
+          <p class="note">The value a country has at each level — what the level adds on top of everything before it, starting from the game's base value (e.g. combat width 15, governing capacity 200) — by the year the game expects that level.</p>
+          <div class="grid">${cards}</div>
+          <details style="margin-top:12px"><summary>Every ${title.toLowerCase()} level</summary>
+            <table class="levels"><tr><th>Level</th><th>Year</th><th>Adds</th><th>Unlocks</th></tr>${rows}</table></details>
+        </section>`;
+      }).join("");
+      app.innerHTML = sections;
+    }
+
+    function render() {
+      document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === state.tab));
+      (state.tab === "units" ? renderUnits : renderTech)();
+    }
+
+    document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { state.tab = b.dataset.tab; render(); } });
+    app.addEventListener("click", e => {
+      const c = e.target.closest("#compare button"), g = e.target.closest("#group button");
+      if (c) { const k = c.dataset.g; state.compare = state.compare.includes(k) ? state.compare.filter(x => x !== k) : [...state.compare, k]; if (!state.compare.length) state.compare = [k]; render(); }
+      if (g) { state.group = g.dataset.g; render(); }
+    });
+
+    fetch("data.json?v=" + Date.now()).then(r => { if (!r.ok) throw new Error(`data.json: HTTP ${r.status}`); return r.json(); }).then(data => {
+      D = data; NAMES = data.names || {};
+      for (const u of D.units) NAMES[u.id] ??= u.name;
+      document.getElementById("version").textContent = data.game_version ? `game ${data.game_version}` : "";
+      if (data.game_version) document.getElementById("footVersion").textContent = ` (version ${data.game_version})`;
+      render();
+    }).catch(e => { app.innerHTML = `<p class="err">Couldn't load the data (${esc(e.message)}). Run <code>ruby eu4/extract.rb</code> first.</p>`; });
+  </script>
+</body>
+</html>

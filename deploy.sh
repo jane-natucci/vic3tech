@@ -56,6 +56,20 @@ else
   aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" \
     --cache-control "public, max-age=31536000"
 fi
+# The EU4 page (eu4/, self-contained): its page on every deploy, its game
+# data (eu4/extract.rb's output) only from a full local deploy, like vic3/'s.
+# Neither is versioned, so both are no-cache. Served at /eu4/: the bucket is
+# private, so CloudFront can't map a folder to its index.html -- the page is
+# also stored under the key "eu4/" itself.
+if [ "${1:-}" != "--code-only" ]; then
+  [ -f eu4/data.json ] || { echo "No eu4/data.json -- run: ruby eu4/extract.rb" >&2; exit 1; }
+  aws s3 cp eu4/data.json "s3://${bucket}/eu4/data.json" --only-show-errors \
+    --cache-control "no-cache" --content-type "application/json"
+fi
+for key in eu4/ eu4/index.html; do
+  aws s3 cp eu4/index.html "s3://${bucket}/${key}" --only-show-errors \
+    --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+done
 aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
 
