@@ -612,8 +612,11 @@ class Vic3Extractor
   # Administration): otherwise the group falls back to its first law the
   # country can have -- e.g. Ezo, a presidential republic, gets National
   # Supremacy. (unlocking_laws within the same group don't count: they're
-  # the path a reform takes.) Checked against a save's laws active since
-  # 1836.1.1: all 10,136 match.
+  # the path a reform takes.) Navy model only exists for countries with a
+  # coastal province. Checked law by law, both ways, against a save made at
+  # the start (1836.1.3): all 443 countries' laws match but one -- Sakuye
+  # (SKY) gets Merchant Navy here; one of its provinces borders the sea on
+  # the province map, yet the game treats it as landlocked.
   ISLAMIC = %w[sunni shiite ibadi].freeze
 
   def extract_laws(countries)
@@ -621,7 +624,8 @@ class Vic3Extractor
       category = Vic3Script.value(body, "law_group_category")
       { id: id, name: text(id) || humanize(id.delete_prefix("lawgroup_")), category: category,
         category_name: text("law_group_category_#{category}") || humanize(category.to_s), laws: [],
-        hierarchy: Vic3Script.value(body, "linked_social_hierarchy") }
+        hierarchy: Vic3Script.value(body, "linked_social_hierarchy"),
+        enable: Vic3Script.value(body, "enable") }
     end
     by_group = groups.to_h { |g| [g[:id], g] }
     visible_if = {}
@@ -646,6 +650,20 @@ class Vic3Extractor
     laws.each_value { |l| l[:laws] = l.delete(:unlocking).reject { |id| laws.dig(id, :group) == l[:group] } }
 
     effects = read(@game.join("common/scripted_effects/00_political_setup.txt")).select { |_, _, b| b.is_a?(Array) }.to_h { |k, _, b| [k, b] }
+    # Navy model's group is only enabled for countries with a coastal state:
+    # one owning any province that touches the sea (see coastal_provinces).
+    coastal_tags = Set.new
+    read(@game.join("common/history/states/00_states.txt")).each do |_, _, top|
+      next unless top.is_a?(Array)
+      top.each do |_, _, body|
+        next unless body.is_a?(Array)
+        Vic3Script.values(body, "create_state").each do |cs|
+          tag = Vic3Script.value(cs, "country") or next
+          owned = Vic3Script.list(Vic3Script.value(cs, "owned_provinces")).map(&:upcase)
+          coastal_tags << tag.delete_prefix("c:") if owned.any? { |prov| coastal_provinces.include?(prov) }
+        end
+      end
+    end
     culture_religion = files("cultures").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }
       .to_h { |id, _, body| [id, Vic3Script.value(body, "religion")] }
     Dir[@game.join("common/history/countries/*.txt")].sort.each do |f|
@@ -658,12 +676,13 @@ class Vic3Extractor
           country = {
             type: Vic3Script.value(definition, "country_type"),
             religion: Vic3Script.value(definition, "religion") || culture_religion[Vic3Script.list(Vic3Script.value(definition, "cultures")).first],
-            hierarchy: Vic3Script.value(definition, "social_hierarchy")
+            hierarchy: Vic3Script.value(definition, "social_hierarchy"),
+            coastal: coastal_tags.include?(tag)
           }
           active = {}
           apply_laws(body, country, effects, laws, active)
           techs = countries[tag][:techs].to_set
-          applies = groups.reject { |g| g[:hierarchy] && g[:hierarchy] != country[:hierarchy] }
+          applies = groups.reject { |g| (g[:hierarchy] && g[:hierarchy] != country[:hierarchy]) || !group_enabled?(g[:enable], country) }
           allowed = lambda do |law|
             (visible_if[law].nil? || law_condition?(visible_if[law], country, unknown: true)) &&
               laws[law][:techs].all? { |t| techs.include?(t) } &&
@@ -687,7 +706,7 @@ class Vic3Extractor
         end
       end
     end
-    [groups.reject { |g| g[:laws].empty? }.map { |g| g.except(:hierarchy) }, laws]
+    [groups.reject { |g| g[:laws].empty? }.map { |g| g.except(:hierarchy, :enable) }, laws]
   end
 
   def apply_laws(block, country, effects, laws, active)
@@ -708,6 +727,46 @@ class Vic3Extractor
         taken = true
       else
         apply_laws(effects[k], country, effects, laws, active) if effects.key?(k) && v == "yes"
+      end
+    end
+  end
+
+  # Land provinces touching a sea province on the province map
+  # (map_data/provinces.png, one colour per province; the sea's colours are
+  # default.map's sea_starts), as "XRRGGBB" like owned_provinces. Neither a
+  # state region's naval exit nor its port province is enough: a region
+  # split between countries can leave some of them a coast without the
+  # port, others none. About 6 seconds for the 8192x3616 map.
+  def coastal_provinces
+    @coastal_provinces ||= begin
+      map = @game.join("map_data")
+      sea = map.join("default.map").read[/sea_starts\s*=\s*\{([^}]*)\}/m, 1].scan(/x\h{6}/i).map { |x| x[1..].to_i(16) }.to_set
+      png = map.join("provinces.png").to_s
+      w, h = IO.popen(["magick", "identify", "-format", "%w %h", png], &:read).split.map(&:to_i)
+      raw = IO.popen(["magick", png, "-depth", "8", "rgb:-"], "rb", &:read)
+      coastal = Set.new
+      touch = ->(a, b) { coastal << b if a != b && sea.include?(a) && !sea.include?(b) }
+      prev = nil
+      h.times do |y|
+        row = raw.byteslice(y * w * 3, w * 3).unpack("C*").each_slice(3).map { |r, g, b| (r << 16) | (g << 8) | b }
+        row.each_cons(2) { |a, b| touch.(a, b); touch.(b, a) }
+        prev&.each_with_index { |a, x| touch.(a, row[x]); touch.(row[x], a) }
+        prev = row
+      end
+      coastal.to_set { |c| format("X%06X", c) }
+    end
+  end
+
+  # A law group's enable trigger: the only one in use is navy model's
+  # any_scope_state = { is_coastal = yes }; anything else is reported and
+  # leaves the group enabled.
+  def group_enabled?(enable, country)
+    return true unless enable
+    enable.all? do |k, _, v|
+      if k == "any_scope_state" && Vic3Script.value(v, "is_coastal") == "yes" then country[:coastal]
+      else
+        (@unknown_law_conditions ||= Set.new).add?("enable:#{k}") && warn("Laws: unknown law group condition #{k}, group left enabled")
+        true
       end
     end
   end
