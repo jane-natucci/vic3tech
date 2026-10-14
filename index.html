@@ -426,6 +426,19 @@
     .law-flags > span { cursor: pointer; }
     .law-flags .pinned { outline: 2px solid var(--accent); border-radius: 3px; }
     .law-detail { font-size: 0.82em; color: var(--muted); margin-top: 4px; }
+    .law-desc { font-size: 0.86em; line-height: 1.45; color: var(--ink); max-width: 640px; margin: 4px 0 6px; }
+    .law-box { grid-column: 1 / -1; margin: 4px 0 6px; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--panel); }
+    .law-box h4 { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-weight: normal; font-size: 1.15em; }
+    .law-box h4 img { width: 32px; height: 32px; border-radius: 50%; }
+    .law-box h4 small { color: var(--muted); font-family: inherit; font-size: 0.65em; }
+    .law-box .close { margin-left: auto; font: inherit; font-size: 0.8em; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+    .law-box .meta { font-size: 0.8em; color: var(--muted); margin: 2px 0 6px; }
+    .law-box .meta .ok { color: var(--inf); } .law-box .meta .no { color: var(--accent); }
+    .law-box ul { font-size: 0.82em; margin: 4px 0 8px; padding: 0; }
+    .law-box li { list-style: none; display: flex; justify-content: space-between; gap: 10px; max-width: 460px; }
+    .law-box .who { font-size: 0.8em; color: var(--muted); margin-top: 6px; }
+    .law-box .law-flags { margin-top: 4px; }
+    .law-box .to-compare { font: inherit; font-size: 0.8em; border: none; background: none; color: var(--accent); padding: 0; margin-top: 8px; cursor: pointer; text-decoration: underline; }
     .law-detail li { list-style: none; display: flex; justify-content: space-between; gap: 10px; max-width: 420px; }
     .treaties { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
     .treaty { background: var(--node); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 0.85em; }
@@ -1419,6 +1432,24 @@
         `${l.icon ? `<img src="${asset(l.icon)}" alt="" loading="lazy">` : ""}${esc(l.name)}` +
         `${since && since !== "1836.1.1" ? ` <span class="since">since ${esc(since.split(".")[0])}</span>` : ""}</button>`;
     }
+    // A clicked law, opened under its group: what it is, what it does, what
+    // it needs, and which countries (in the sidebar's scope) have it.
+    function lawBox(c, id, group) {
+      const l = lawOf(id), has = lawsOf(c).includes(id);
+      const scope = state.data.countries.filter(x => (state.scope === "all" || isEurope(x)) && lawGroupsOf(x).includes(group));
+      const holders = scope.filter(x => lawsOf(x).includes(id)).sort((a, b) => a.name.localeCompare(b.name));
+      const needs = l.techs.map(t => `<span class="${c.techSet.has(t) ? "ok" : "no"}">${esc(state.techs[t]?.name || t)} ${c.techSet.has(t) ? "✓" : "✗"}</span>`).join(", ");
+      return `<div class="law-box">
+        <h4>${l.icon ? `<img src="${asset(l.icon)}" alt="">` : ""}<span>${esc(l.name)} <small>${esc(group.name)}</small></span><button class="close" data-law-close>Close</button></h4>
+        <div class="meta">${has ? `${esc(c.name)} has this law${c.lawSince?.[id] && c.lawSince[id] !== "1836.1.1" ? ` since ${esc(c.lawSince[id].split(".")[0])}` : ""}` : `${esc(c.name)} doesn't have this law`}` +
+          `${l.techs.length ? ` · needs ${needs}` : " · no technology needed"}${l.progressiveness ? ` · progressiveness ${l.progressiveness > 0 ? "+" : ""}${l.progressiveness}` : ""}</div>
+        ${l.desc ? `<p class="law-desc">${esc(l.desc)}</p>` : ""}
+        ${l.modifiers.length ? `<ul>${l.modifiers.map(m => `<li><span>${esc(m.name)}</span><span>${fmtModifier(m)}</span></li>`).join("")}</ul>` : ""}
+        <div class="who">${holders.length} of ${scope.length} ${state.scope === "all" ? "" : "European "}countries ${state.saveInfo ? "have" : "start with"} it${holders.length ? " — click a flag to see that country:" : "."}</div>
+        <div class="law-flags">${holders.map(x => `<span data-tag="${x.tag}" class="${x.tag === state.pinned ? "pinned" : ""}">${flagHtml(x, "")}</span>`).join("")}</div>
+        <button class="to-compare" data-law-compare="${group.id}">Compare every ${esc(group.name.toLowerCase())} law across countries →</button>
+      </div>`;
+    }
     function renderLaws() {
       const c = current(), save = !!state.saveInfo;
       document.getElementById("lawTabs").innerHTML = [["country", c.name], ["compare", "Across countries"]].map(([k, label]) =>
@@ -1428,13 +1459,14 @@
         note.innerHTML = (save
           ? `${esc(c.name)}'s laws in your save, highlighted, with the year for laws enacted after 1836.`
           : `${esc(c.name)}'s laws at the 1836 start, highlighted.`) +
-          ` Next to each are the other laws of that group; dimmed ones need a technology ${esc(c.name)} doesn't have yet. Hover over a law for its effects; click one to see which countries have it. The sidebar ranks countries by the game's <i>progressiveness</i> of their laws added up.`;
+          ` Next to each are the other laws of that group; dimmed ones need a technology ${esc(c.name)} doesn't have yet. Click a law to read what it is and does, and which countries have it. The sidebar ranks countries by the game's <i>progressiveness</i> of their laws added up.`;
         if (!lawsOf(c).length) { body.innerHTML = `<p class="muted">No laws for ${esc(c.name)}${save ? " in this save (shared links made before laws were added don't have them)" : ""}.</p>`; return; }
         let cat = null;
         body.innerHTML = lawGroupsOf(c).map(g => {
           const head = g.category !== cat ? `<div class="law-cat">${esc(g.category_name)}</div>` : ""; cat = g.category;
           const mine = g.laws.find(id => lawsOf(c).includes(id));
-          return head + `<div class="law-row"><b>${esc(g.name)}</b><div class="laws">${lawChip(c, mine, true)}${g.laws.filter(id => id !== mine).map(id => lawChip(c, id, false)).join("")}</div></div>`;
+          return head + `<div class="law-row"><b>${esc(g.name)}</b><div class="laws">${lawChip(c, mine, true)}${g.laws.filter(id => id !== mine).map(id => lawChip(c, id, false)).join("")}</div>` +
+            (g.laws.includes(state.lawFocus) ? lawBox(c, state.lawFocus, g) : "") + `</div>`;
         }).join("");
         return;
       }
@@ -1451,6 +1483,7 @@
           const n = inScope.filter(x => lawGroupsOf(x).includes(group)).length || 1;
           return `<div class="law-share"><div>${lawChip(current(), id, lawsOf(current()).includes(id))}
               <div class="bar"><i style="width:${holders.length / n * 100}%"></i></div>
+              ${l.desc ? `<p class="law-desc">${esc(l.desc)}</p>` : ""}
               <div class="law-detail">${holders.length} of ${n} countries${l.techs.length ? ` · needs ${l.techs.map(t => esc(state.techs[t]?.name || t)).join(", ")}` : ""}
               ${l.modifiers.length ? `<ul>${l.modifiers.map(m => `<li><span>${esc(m.name)}</span><span>${fmtModifier(m)}</span></li>`).join("")}</ul>` : ""}</div></div>
             <div class="law-flags">${holders.map(x => `<span data-tag="${x.tag}" class="${x.tag === state.pinned ? "pinned" : ""}">${flagHtml(x, "")}</span>`).join("") || `<span class="muted" style="font-size:0.7em">None</span>`}</div></div>`;
@@ -1462,9 +1495,13 @@
     });
     document.getElementById("lawBody").addEventListener("click", e => {
       const flag = e.target.closest("[data-tag]"); if (flag) { pin(flag.dataset.tag); return; }
+      if (e.target.closest("[data-law-close]")) { state.lawFocus = null; renderLaws(); return; }
+      const compare = e.target.closest("[data-law-compare]");
+      if (compare) { state.lawGroup = compare.dataset.lawCompare; state.lawKind = "compare"; syncHash(); renderLaws(); document.getElementById("lawView").scrollTop = 0; return; }
       const law = e.target.closest("[data-law]"); if (!law) return;
-      state.lawFocus = law.dataset.law; state.lawGroup = lawOf(law.dataset.law).group;
-      if (state.lawKind !== "compare") { state.lawKind = "compare"; syncHash(); }
+      const id = law.dataset.law;
+      state.lawFocus = state.lawFocus === id && state.lawKind === "country" ? null : id;
+      state.lawGroup = lawOf(id).group;
       renderLaws();
     });
     document.getElementById("lawBody").addEventListener("change", e => {

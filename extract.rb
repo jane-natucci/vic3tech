@@ -625,7 +625,7 @@ class Vic3Extractor
       by_group[group]&.dig(:laws)&.push(id)
       visible_if[id] = Vic3Script.value(body, "is_visible")
       [id, {
-        name: text(id) || humanize(id), group: group,
+        name: text(id) || humanize(id), group: group, desc: text("#{id}_desc"),
         progressiveness: Vic3Script.value(body, "progressiveness").to_i,
         techs: Vic3Script.list(Vic3Script.value(body, "unlocking_technologies")),
         modifiers: modifiers(Vic3Script.value(body, "modifier")),
