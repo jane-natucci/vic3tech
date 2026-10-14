@@ -1421,12 +1421,16 @@
     // Groups a country has a law in -- caste hegemony and the Edo status
     // system only exist for the countries with that social hierarchy.
     const lawGroupsOf = c => state.data.law_groups.filter(g => g.laws.some(id => lawsOf(c).includes(id)));
-    const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t));
+    // Can't be enacted (yet): a tech it lacks, or none of the other-group
+    // laws it needs (Subjecthood needs Monarchy, Theocracy, ...).
+    const lawNeedsLaw = (c, id) => lawOf(id).laws?.length > 0 && !lawOf(id).laws.some(l => lawsOf(c).includes(l));
+    const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t)) || lawNeedsLaw(c, id);
     function lawChip(c, id, active) {
       const l = lawOf(id), locked = !active && lawLocked(c, id);
       const since = active && c.lawSince?.[id];
       const title = [l.name, l.progressiveness ? `progressiveness ${l.progressiveness > 0 ? "+" : ""}${l.progressiveness}` : null,
-        locked ? `needs ${l.techs.map(t => state.techs[t]?.name || t).join(", ")}` : null,
+        locked && l.techs.some(t => !c.techSet.has(t)) ? `needs ${l.techs.map(t => state.techs[t]?.name || t).join(", ")}` : null,
+        locked && lawNeedsLaw(c, id) ? `needs one of: ${l.laws.map(x => lawOf(x)?.name || x).join(", ")}` : null,
         ...l.modifiers.map(m => `${m.name}: ${fmtModifier(m)}`)].filter(Boolean).join("\n");
       return `<button class="law${active ? " on" : ""}${locked ? " locked" : ""}${state.lawFocus === id ? " focus" : ""}" data-law="${id}" title="${esc(title)}">` +
         `${l.icon ? `<img src="${asset(l.icon)}" alt="" loading="lazy">` : ""}${esc(l.name)}` +
@@ -1442,7 +1446,8 @@
       return `<div class="law-box">
         <h4>${l.icon ? `<img src="${asset(l.icon)}" alt="">` : ""}<span>${esc(l.name)} <small>${esc(group.name)}</small></span><button class="close" data-law-close>Close</button></h4>
         <div class="meta">${has ? `${esc(c.name)} has this law${c.lawSince?.[id] && c.lawSince[id] !== "1836.1.1" ? ` since ${esc(c.lawSince[id].split(".")[0])}` : ""}` : `${esc(c.name)} doesn't have this law`}` +
-          `${l.techs.length ? ` · needs ${needs}` : " · no technology needed"}${l.progressiveness ? ` · progressiveness ${l.progressiveness > 0 ? "+" : ""}${l.progressiveness}` : ""}</div>
+          `${l.techs.length ? ` · needs ${needs}` : " · no technology needed"}` +
+          `${l.laws?.length ? ` · needs one of these laws: ${l.laws.map(x => `<span class="${lawsOf(c).includes(x) ? "ok" : "no"}">${esc(lawOf(x)?.name || x)}${lawsOf(c).includes(x) ? " ✓" : ""}</span>`).join(", ")}` : ""}${l.progressiveness ? ` · progressiveness ${l.progressiveness > 0 ? "+" : ""}${l.progressiveness}` : ""}</div>
         ${l.desc ? `<p class="law-desc">${esc(l.desc)}</p>` : ""}
         ${l.modifiers.length ? `<ul>${l.modifiers.map(m => `<li><span>${esc(m.name)}</span><span>${fmtModifier(m)}</span></li>`).join("")}</ul>` : ""}
         <div class="who">${holders.length} of ${scope.length} ${state.scope === "all" ? "" : "European "}countries ${state.saveInfo ? "have" : "start with"} it${holders.length ? " — click a flag to see that country:" : "."}</div>
@@ -1459,7 +1464,7 @@
         note.innerHTML = (save
           ? `${esc(c.name)}'s laws in your save, highlighted, with the year for laws enacted after 1836.`
           : `${esc(c.name)}'s laws at the 1836 start, highlighted.`) +
-          ` Next to each are the other laws of that group; dimmed ones need a technology ${esc(c.name)} doesn't have yet. Click a law to read what it is and does, and which countries have it. The sidebar ranks countries by the game's <i>progressiveness</i> of their laws added up.`;
+          ` Next to each are the other laws of that group; dimmed ones need a technology ${esc(c.name)} doesn't have yet, or another law it doesn't have (Subjecthood, for example, only goes with a monarchy, theocracy, chiefdom or colonial administration). Click a law to read what it is and does, and which countries have it. The sidebar ranks countries by the game's <i>progressiveness</i> of their laws added up.`;
         if (!lawsOf(c).length) { body.innerHTML = `<p class="muted">No laws for ${esc(c.name)}${save ? " in this save (shared links made before laws were added don't have them)" : ""}.</p>`; return; }
         let cat = null;
         body.innerHTML = lawGroupsOf(c).map(g => {

@@ -607,8 +607,13 @@ class Vic3Extractor
   # it the country can see (Chiefdom only shows to decentralized nations,
   # so others get Monarchy) -- except groups tied to a social hierarchy
   # (caste hegemony), which only countries with that hierarchy have.
-  # Checked against a save's laws active since 1836.1.1: one country in 441
-  # differs (Ezo's citizenship law).
+  # A law with unlocking_laws only stays while one of those is active too
+  # (Subjecthood needs Monarchy, Theocracy, Chiefdom or Colonial
+  # Administration): otherwise the group falls back to its first law the
+  # country can have -- e.g. Ezo, a presidential republic, gets National
+  # Supremacy. (unlocking_laws within the same group don't count: they're
+  # the path a reform takes.) Checked against a save's laws active since
+  # 1836.1.1: all 10,136 match.
   ISLAMIC = %w[sunni shiite ibadi].freeze
 
   def extract_laws(countries)
@@ -628,10 +633,17 @@ class Vic3Extractor
         name: text(id) || humanize(id), group: group, desc: text("#{id}_desc"),
         progressiveness: Vic3Script.value(body, "progressiveness").to_i,
         techs: Vic3Script.list(Vic3Script.value(body, "unlocking_technologies")),
+        # unlocking_laws: kept below once every law's group is known.
+        unlocking: Vic3Script.list(Vic3Script.value(body, "unlocking_laws")),
         modifiers: modifiers(Vic3Script.value(body, "modifier")),
         icon: image(Vic3Script.value(body, "icon"), "laws", 64)
       }]
     end
+
+    # unlocking_laws in the law's own group are a reform path (Legacy Slavery
+    # is enacted from Slave Trade), not a requirement to keep it; those in
+    # other groups are: the law needs one of them active (laws: [...]).
+    laws.each_value { |l| l[:laws] = l.delete(:unlocking).reject { |id| laws.dig(id, :group) == l[:group] } }
 
     effects = read(@game.join("common/scripted_effects/00_political_setup.txt")).select { |_, _, b| b.is_a?(Array) }.to_h { |k, _, b| [k, b] }
     culture_religion = files("cultures").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }
@@ -650,10 +662,28 @@ class Vic3Extractor
           }
           active = {}
           apply_laws(body, country, effects, laws, active)
-          countries[tag][:laws] = groups.filter_map do |g|
-            next if g[:hierarchy] && g[:hierarchy] != country[:hierarchy]
-            active[g[:id]] || g[:laws].find { |law| visible_if[law].nil? || law_condition?(visible_if[law], country, unknown: true) }
+          techs = countries[tag][:techs].to_set
+          applies = groups.reject { |g| g[:hierarchy] && g[:hierarchy] != country[:hierarchy] }
+          allowed = lambda do |law|
+            (visible_if[law].nil? || law_condition?(visible_if[law], country, unknown: true)) &&
+              laws[law][:techs].all? { |t| techs.include?(t) } &&
+              (laws[law][:laws].empty? || laws[law][:laws].any? { |l| active.value?(l) })
           end
+          # First fill every empty group, then replace laws whose required
+          # laws aren't active -- in that order, since a requirement can be
+          # met by another group's default (Mexico's Cultural Exclusion needs
+          # a slavery law, which only the default gives it). Repeat while
+          # that changes anything: a replacement can affect another group.
+          5.times do
+            applies.each { |g| active[g[:id]] ||= g[:laws].find(&allowed) }
+            invalid = applies.select do |g|
+              law = active[g[:id]]
+              law && laws[law][:laws].any? && laws[law][:laws].none? { |l| active.value?(l) }
+            end
+            break if invalid.empty?
+            invalid.each { |g| active[g[:id]] = g[:laws].find(&allowed) }
+          end
+          countries[tag][:laws] = applies.filter_map { |g| active[g[:id]] }
         end
       end
     end
