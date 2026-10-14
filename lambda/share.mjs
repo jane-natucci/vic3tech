@@ -81,6 +81,11 @@ function clean(s) {
       prestige: optNum(c.prestige, "prestige"),
       gdp: optNum(c.gdp, "gdp"),
       techs: list(c.techs, 400, id, "techs"),
+      // Active laws and when they were enacted (shares made before laws were read have none).
+      laws: list(c.laws || [], 60, l => ({
+        id: notReserved(str(l?.id, /^law_[a-z0-9_]{1,60}$/, "law"), "law"),
+        since: l.since == null ? null : str(String(l.since), /^\d{1,4}\.\d{1,2}\.\d{1,2}$/, "law date"),
+      }), "laws"),
       army: Object.fromEntries(Object.entries(c.army || {}).slice(0, 100).map(([k, a]) =>
         [id(k), { count: num(a.count, "army"), manpower: num(a.manpower, "army") }])),
       navy: numMap(c.navy || {}, 100, /^[a-z_]{1,60}$/, "navy"),

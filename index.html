@@ -400,6 +400,33 @@
     .trade-ctl { display: flex; gap: 14px; align-items: center; padding: 10px 20px 0; font-size: 0.85em; color: var(--muted); }
     .trade-ctl label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
     #tradeBody { padding: 12px 20px 40px; }
+
+    /* Laws: one row per law group, the country's law first, then the rest
+       of the group (dimmed when a tech it lacks is needed). */
+    #lawView { overflow: auto; flex-direction: column; }
+    #lawView .note { font-size: 0.78em; color: var(--muted); padding: 10px 20px 0; line-height: 1.45; max-width: 980px; }
+    #lawBody { padding: 12px 20px 40px; }
+    .law-cat { font-family: Georgia, serif; font-size: 1.1em; margin: 14px 0 4px; }
+    .law-row { display: grid; grid-template-columns: 170px 1fr; gap: 10px; align-items: start; padding: 7px 0; border-bottom: 1px solid var(--line); }
+    .law-row > b { font-weight: normal; color: var(--muted); font-size: 0.86em; padding-top: 5px; }
+    .law-row .laws { display: flex; flex-wrap: wrap; gap: 5px; }
+    .law { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 0.82em; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 2px 10px 2px 3px; cursor: pointer; }
+    .law img { width: 22px; height: 22px; border-radius: 50%; }
+    .law.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+    .law.locked { opacity: 0.45; }
+    .law.focus { box-shadow: 0 0 0 2px var(--accent); }
+    .law .since { font-weight: normal; color: var(--accent); font-size: 0.9em; }
+    .law .prog { font-weight: normal; color: var(--muted); font-size: 0.85em; }
+    .law-groups { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 10px; }
+    .law-groups select { font: inherit; font-size: 0.9em; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+    .law-share { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 6px 14px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .law-share .bar { height: 8px; border-radius: 4px; background: var(--line); margin: 4px 0 6px; overflow: hidden; }
+    .law-share .bar i { display: block; height: 100%; background: var(--accent); }
+    .law-flags { display: flex; flex-wrap: wrap; gap: 3px 5px; font-size: 1.15em; line-height: 1.3; align-content: flex-start; }
+    .law-flags > span { cursor: pointer; }
+    .law-flags .pinned { outline: 2px solid var(--accent); border-radius: 3px; }
+    .law-detail { font-size: 0.82em; color: var(--muted); margin-top: 4px; }
+    .law-detail li { list-style: none; display: flex; justify-content: space-between; gap: 10px; max-width: 420px; }
     .treaties { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
     .treaty { background: var(--node); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 0.85em; }
     .treaty h3 { font-family: Georgia, serif; font-weight: normal; font-size: 1.15em; margin-bottom: 2px; }
@@ -505,6 +532,7 @@
       <button data-view="unitView">Units<span class="long"> &amp; mobilization</span></button>
       <button data-view="economyView">Economy</button>
       <button data-view="tradeView">Trade</button>
+      <button data-view="lawView">Laws</button>
     </div>
     <div class="save-ctl" id="saveCtl">
       <button id="loadSave" title="See your own campaign in every tab">Load your save…</button>
@@ -578,6 +606,12 @@
       <div id="tradeBody"></div>
     </section>
 
+    <section class="view" id="lawView">
+      <div class="subtabs" id="lawTabs"></div>
+      <p class="note" id="lawNote"></p>
+      <div id="lawBody"></div>
+    </section>
+
     <footer>
       Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>; Victoria 3 is © Paradox Interactive.
       Modern emoji flags are only used to tell countries apart (on devices without flag emoji, flag images from
@@ -649,13 +683,14 @@
     // a link copied at any point actually reopens exactly where it was
     // copied from instead of always defaulting back to Technology (the
     // only tab/sub-tab a fresh page load can otherwise guess).
-    const VIEW_HASH = { techView: null, armyView: "army", unitView: "units", economyView: "economy", tradeView: "trade" };
-    const HASH_VIEW = { army: "armyView", units: "unitView", economy: "economyView", trade: "tradeView" };
+    const VIEW_HASH = { techView: null, armyView: "army", unitView: "units", economyView: "economy", tradeView: "trade", lawView: "laws" };
+    const HASH_VIEW = { army: "armyView", units: "unitView", economy: "economyView", trade: "tradeView", laws: "lawView" };
     // Which state key holds each tab's own sub-tab, and what values are
     // valid for it -- economyView's is checked against a fixed list since
     // ECON_KINDS doesn't exist as a named lookup the way UNIT_KINDS does.
-    const SUB_KEY = { unitView: "unitKind", economyView: "econKind", tradeView: "tradeKind" };
-    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" || k === "centers" };
+    const SUB_KEY = { unitView: "unitKind", economyView: "econKind", tradeView: "tradeKind", lawView: "lawKind" };
+    const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" || k === "centers",
+                        lawView: k => k === "country" || k === "compare" };
     function parseHash() {
       const [tagPart, part2, part3] = location.hash.slice(1).split("/");
       const tag = tagPart ? tagPart.toUpperCase() : null;
@@ -851,6 +886,7 @@
           men: numeric("men", menOf)
         }[state.armySort] || numeric("battalions", battalions);
       }
+      if (viewOn("lawView")) return numeric("progressiveness", progressiveness);
       if (viewOn("tradeView")) return state.tradeKind === "centers"
         ? numeric("trade center levels", c => econOf(c).levels?.building_trade_center || 0)
         : numeric("treaties", c => treatiesOf(c.tag).length);
@@ -881,9 +917,11 @@
       const list = state.data.countries.filter(c => inScope(c) && match(c))
         .sort((a, b) => m.value(b) - m.value(a) || battalions(b) - battalions(a) || a.name.localeCompare(b.name));
       const max = m.total || Math.max(1, ...list.map(m.value));
+      // Progressiveness goes negative: meters then start from the lowest value.
+      const min = Math.min(0, ...list.map(m.value));
       const row = c => `<div class="country${c.tag === state.pinned ? " pinned" : ""}" data-tag="${c.tag}">
           ${flagHtml(c)}<span class="name">${esc(c.name)}</span><span class="count">${m.value(c).toLocaleString("en")}${m.total ? `/${m.total}` : ""}</span>
-          <span class="meter"><i style="width:${m.value(c) / max * 100}%"></i></span></div>`;
+          <span class="meter"><i style="width:${(m.value(c) - min) / (max - min || 1) * 100}%"></i></span></div>`;
       const label = state.scope === "all" ? "All countries" : "Europe";
       document.getElementById("countries").innerHTML =
         list.length ? `<h3>${label} · by ${esc(m.label)}</h3>${list.map(row).join("")}` : `<p class="hint">No matches.</p>`;
@@ -1355,7 +1393,83 @@
       if (viewOn("unitView")) renderUnits();
       if (viewOn("economyView")) renderEconomy();
       if (viewOn("tradeView")) renderTrade();
+      if (viewOn("lawView")) renderLaws();
     }
+
+    // --- Laws ----------------------------------------------------------------
+    // Each country's law in every group: at 1836 as extract.rb works it out
+    // from the history files, with a save the laws active in it (and since
+    // when, if enacted after the start). "Across countries" shows how many
+    // countries in the sidebar's scope have each law of one group.
+    state.lawKind = "country"; state.lawGroup = null; state.lawFocus = null;
+    const lawOf = id => state.data.laws[id];
+    const lawsOf = c => c.laws || [];
+    const progressiveness = c => lawsOf(c).reduce((n, id) => n + (lawOf(id)?.progressiveness || 0), 0);
+    // Groups a country has a law in -- caste hegemony and the Edo status
+    // system only exist for the countries with that social hierarchy.
+    const lawGroupsOf = c => state.data.law_groups.filter(g => g.laws.some(id => lawsOf(c).includes(id)));
+    const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t));
+    function lawChip(c, id, active) {
+      const l = lawOf(id), locked = !active && lawLocked(c, id);
+      const since = active && c.lawSince?.[id];
+      const title = [l.name, l.progressiveness ? `progressiveness ${l.progressiveness > 0 ? "+" : ""}${l.progressiveness}` : null,
+        locked ? `needs ${l.techs.map(t => state.techs[t]?.name || t).join(", ")}` : null,
+        ...l.modifiers.map(m => `${m.name}: ${fmtModifier(m)}`)].filter(Boolean).join("\n");
+      return `<button class="law${active ? " on" : ""}${locked ? " locked" : ""}${state.lawFocus === id ? " focus" : ""}" data-law="${id}" title="${esc(title)}">` +
+        `${l.icon ? `<img src="${asset(l.icon)}" alt="" loading="lazy">` : ""}${esc(l.name)}` +
+        `${since && since !== "1836.1.1" ? ` <span class="since">since ${esc(since.split(".")[0])}</span>` : ""}</button>`;
+    }
+    function renderLaws() {
+      const c = current(), save = !!state.saveInfo;
+      document.getElementById("lawTabs").innerHTML = [["country", c.name], ["compare", "Across countries"]].map(([k, label]) =>
+        `<button data-law-kind="${k}" class="${k === state.lawKind ? "on" : ""}">${esc(label)}</button>`).join("");
+      const note = document.getElementById("lawNote"), body = document.getElementById("lawBody");
+      if (state.lawKind === "country") {
+        note.innerHTML = (save
+          ? `${esc(c.name)}'s laws in your save, highlighted, with the year for laws enacted after 1836.`
+          : `${esc(c.name)}'s laws at the 1836 start, highlighted.`) +
+          ` Next to each are the other laws of that group; dimmed ones need a technology ${esc(c.name)} doesn't have yet. Hover over a law for its effects; click one to see which countries have it. The sidebar ranks countries by the game's <i>progressiveness</i> of their laws added up.`;
+        if (!lawsOf(c).length) { body.innerHTML = `<p class="muted">No laws for ${esc(c.name)}${save ? " in this save (shared links made before laws were added don't have them)" : ""}.</p>`; return; }
+        let cat = null;
+        body.innerHTML = lawGroupsOf(c).map(g => {
+          const head = g.category !== cat ? `<div class="law-cat">${esc(g.category_name)}</div>` : ""; cat = g.category;
+          const mine = g.laws.find(id => lawsOf(c).includes(id));
+          return head + `<div class="law-row"><b>${esc(g.name)}</b><div class="laws">${lawChip(c, mine, true)}${g.laws.filter(id => id !== mine).map(id => lawChip(c, id, false)).join("")}</div></div>`;
+        }).join("");
+        return;
+      }
+      // Across countries: one group at a time.
+      const groups = state.data.law_groups, group = groups.find(g => g.id === state.lawGroup) || groups[0];
+      state.lawGroup = group.id;
+      const inScope = state.data.countries.filter(x => state.scope === "all" || isEurope(x)).filter(x => lawsOf(x).length);
+      note.innerHTML = `How many ${state.scope === "all" ? "" : "European "}countries ${save ? "have" : "start with"} each ${esc(group.name.toLowerCase())} law${save ? " in your save" : ""}. Click a flag to pick that country; the sidebar's Europe/Whole world switch changes who's counted.`;
+      body.innerHTML = `<div class="law-groups"><select id="lawGroupPick">${[...new Set(groups.map(g => g.category))].map(cat =>
+          `<optgroup label="${esc(groups.find(g => g.category === cat).category_name)}">${groups.filter(g => g.category === cat).map(g =>
+            `<option value="${g.id}"${g.id === group.id ? " selected" : ""}>${esc(g.name)}</option>`).join("")}</optgroup>`).join("")}</select></div>` +
+        group.laws.map(id => {
+          const l = lawOf(id), holders = inScope.filter(x => lawsOf(x).includes(id)).sort((a, b) => a.name.localeCompare(b.name));
+          const n = inScope.filter(x => lawGroupsOf(x).includes(group)).length || 1;
+          return `<div class="law-share"><div>${lawChip(current(), id, lawsOf(current()).includes(id))}
+              <div class="bar"><i style="width:${holders.length / n * 100}%"></i></div>
+              <div class="law-detail">${holders.length} of ${n} countries${l.techs.length ? ` · needs ${l.techs.map(t => esc(state.techs[t]?.name || t)).join(", ")}` : ""}
+              ${l.modifiers.length ? `<ul>${l.modifiers.map(m => `<li><span>${esc(m.name)}</span><span>${fmtModifier(m)}</span></li>`).join("")}</ul>` : ""}</div></div>
+            <div class="law-flags">${holders.map(x => `<span data-tag="${x.tag}" class="${x.tag === state.pinned ? "pinned" : ""}">${flagHtml(x, "")}</span>`).join("") || `<span class="muted" style="font-size:0.7em">None</span>`}</div></div>`;
+        }).join("");
+    }
+    document.getElementById("lawTabs").addEventListener("click", e => {
+      const b = e.target.closest("button[data-law-kind]"); if (!b) return;
+      state.lawKind = b.dataset.lawKind; syncHash(); renderLaws();
+    });
+    document.getElementById("lawBody").addEventListener("click", e => {
+      const flag = e.target.closest("[data-tag]"); if (flag) { pin(flag.dataset.tag); return; }
+      const law = e.target.closest("[data-law]"); if (!law) return;
+      state.lawFocus = law.dataset.law; state.lawGroup = lawOf(law.dataset.law).group;
+      if (state.lawKind !== "compare") { state.lawKind = "compare"; syncHash(); }
+      renderLaws();
+    });
+    document.getElementById("lawBody").addEventListener("change", e => {
+      if (e.target.id === "lawGroupPick") { state.lawGroup = e.target.value; state.lawFocus = null; renderLaws(); }
+    });
 
     // --- Loading a melted save -------------------------------------------------
     // public/vic3/save-worker.js reads the file in a Web Worker and returns a
@@ -1401,6 +1515,9 @@
           tag: sc.tag, name: state.data.country_names?.[sc.tag] || econ.regions[sc.capitalRegion]?.name || sc.tag, tier: null,
           region: state.data.state_regions?.[sc.capitalRegion] || null,
           techs, techSet: new Set(techs), army, navy, prestige: sc.prestige, gdp: sc.gdp,
+          // Saves shared before laws were read have none.
+          laws: (sc.laws || []).map(l => l.id).filter(id => state.data.laws?.[id]),
+          lawSince: Object.fromEntries((sc.laws || []).map(l => [l.id, l.since])),
           men: Object.values(sc.army).reduce((n, a) => n + a.manpower, 0),
         });
         econCountries[sc.tag] = { states: sc.states.map(st => {
@@ -1700,6 +1817,7 @@
       if (viewOn("armyView")) renderArmies();
       if (viewOn("economyView")) renderEconomy();
       if (viewOn("tradeView")) renderTrade();
+      if (viewOn("lawView")) renderLaws();
     }));
 
     document.getElementById("tabs").addEventListener("click", e => {

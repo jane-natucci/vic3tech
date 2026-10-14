@@ -14,7 +14,7 @@
 const SECTIONS = new Set([
   "date", "player_manager", "country_manager", "technology", "states", "building_manager",
   "new_combat_unit_manager", "military_formation_manager", "ship_templates_manager", "ship_manager",
-  "market_manager", "treaty_manager", "treaty_article_manager",
+  "market_manager", "treaty_manager", "treaty_article_manager", "laws",
 ]);
 // Blocks inside an entry whose contents we need (everything else is skipped).
 const BLOCKS = new Set(["acquired_technologies", "prestige", "gdp", "provinces", "versions", "inputs", "trade"]);
@@ -41,6 +41,7 @@ async function read(file) {
     prices: [],         // world-market price history per market channel (oldest -> newest)
     treaties: {},       // id -> { first, second, since, days }
     articles: [],       // { article, treaty, source, target, goods, quantity }
+    laws: {},           // country id -> [{ id, since }], active laws only
   };
   let priceChannel = null, inPrices = false;
   let section = null, entry = null, block = null, blockLines = [];
@@ -160,6 +161,11 @@ async function read(file) {
         });
         break;
       }
+      case "laws":
+        // One entry per law a country has ever held; active=yes marks the
+        // current one in each group, activation_date when it was enacted.
+        if (e.active === "yes" && e.law) (out.laws[e.country] ??= []).push({ id: e.law, since: e.activation_date || null });
+        break;
       case "ship_manager":
         if (e.version) out.ships.push({ fleet: e.fleet, version: e.version });
         break;
@@ -193,7 +199,7 @@ function summarize(o) {
   const byId = {};
   for (const [id, c] of Object.entries(o.countries)) {
     byId[id] = { tag: c.tag, capitalRegion: o.states[c.capital]?.region || null, prestige: c.prestige, gdp: c.gdp,
-                 techs: o.techs[id] || [], army: {}, navy: {}, states: [] };
+                 techs: o.techs[id] || [], laws: o.laws[id] || [], army: {}, navy: {}, states: [] };
   }
   const stateInfo = {};
   for (const [id, s] of Object.entries(o.states)) {

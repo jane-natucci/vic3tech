@@ -89,6 +89,7 @@ class Vic3Extractor
     add_armies(countries)
     icons = write_icons(techs)
     units, ships, mobilization = extract_units, extract_ships, extract_mobilization
+    law_groups, laws = extract_laws(countries)
 
     data = {
       generated_at: Time.now.utc.iso8601,
@@ -109,6 +110,8 @@ class Vic3Extractor
       units: units,
       ships: ships,
       mobilization: mobilization,
+      law_groups: law_groups,
+      laws: laws,
       countries: countries.values.select { |c| c[:exists] }.map { |c| c.except(:exists) }
     }
     @out.mkpath
@@ -116,7 +119,7 @@ class Vic3Extractor
     economy = extract_economy(data[:countries].map { |c| c[:tag] }.to_set)
     @out.join("economy.json").write(JSON.generate(economy))
     puts "Wrote #{data[:techs].size} techs, #{units.size} units, #{ships.size} ships, #{mobilization.size} mobilization options, " \
-         "#{data[:countries].size} countries, #{economy[:buildings].size} building types to #{@out}"
+         "#{laws.size} laws, #{data[:countries].size} countries, #{economy[:buildings].size} building types to #{@out}"
   end
 
   private
@@ -590,6 +593,111 @@ class Vic3Extractor
   def principle_name(id)
     group, level = id.delete_prefix("principle_").match(/\A(\w+?)_(\d+)\z/)&.captures
     "#{text("principle_group_#{group}") || humanize(group.to_s)} (level #{level})"
+  end
+
+  # --- Laws ----------------------------------------------------------------
+  # Law groups in the game's order (power structure, economy, human rights),
+  # every law with what unlocks it and what it does, and each country's laws
+  # at the 1836 start. Those come from its history file, in order: one of
+  # the shared effect_starting_politics_* effects (common/scripted_effects/
+  # 00_political_setup.txt) and its own activate_law lines -- the last law
+  # set in a group wins, as in the game. The shared effects only branch on
+  # two things a country's definition decides: an Islamic state religion and
+  # being a decentralized nation. A group nothing sets gets the first law in
+  # it the country can see (Chiefdom only shows to decentralized nations,
+  # so others get Monarchy) -- except groups tied to a social hierarchy
+  # (caste hegemony), which only countries with that hierarchy have.
+  # Checked against a save's laws active since 1836.1.1: one country in 441
+  # differs (Ezo's citizenship law).
+  ISLAMIC = %w[sunni shiite ibadi].freeze
+
+  def extract_laws(countries)
+    groups = read(@game.join("common/law_groups/00_laws.txt")).select { |_, _, b| b.is_a?(Array) }.map do |id, _, body|
+      category = Vic3Script.value(body, "law_group_category")
+      { id: id, name: text(id) || humanize(id.delete_prefix("lawgroup_")), category: category,
+        category_name: text("law_group_category_#{category}") || humanize(category.to_s), laws: [],
+        hierarchy: Vic3Script.value(body, "linked_social_hierarchy") }
+    end
+    by_group = groups.to_h { |g| [g[:id], g] }
+    visible_if = {}
+    laws = files("laws").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }.to_h do |id, _, body|
+      group = Vic3Script.value(body, "group")
+      by_group[group]&.dig(:laws)&.push(id)
+      visible_if[id] = Vic3Script.value(body, "is_visible")
+      [id, {
+        name: text(id) || humanize(id), group: group,
+        progressiveness: Vic3Script.value(body, "progressiveness").to_i,
+        techs: Vic3Script.list(Vic3Script.value(body, "unlocking_technologies")),
+        modifiers: modifiers(Vic3Script.value(body, "modifier")),
+        icon: image(Vic3Script.value(body, "icon"), "laws", 64)
+      }]
+    end
+
+    effects = read(@game.join("common/scripted_effects/00_political_setup.txt")).select { |_, _, b| b.is_a?(Array) }.to_h { |k, _, b| [k, b] }
+    culture_religion = files("cultures").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }
+      .to_h { |id, _, body| [id, Vic3Script.value(body, "religion")] }
+    Dir[@game.join("common/history/countries/*.txt")].sort.each do |f|
+      read(f).each do |_, _, top|
+        next unless top.is_a?(Array)
+        top.each do |scope, _, body|
+          tag = scope&.delete_prefix("c:")
+          next unless scope&.start_with?("c:") && body.is_a?(Array) && countries.key?(tag)
+          definition = country_definitions[tag] || []
+          country = {
+            type: Vic3Script.value(definition, "country_type"),
+            religion: Vic3Script.value(definition, "religion") || culture_religion[Vic3Script.list(Vic3Script.value(definition, "cultures")).first],
+            hierarchy: Vic3Script.value(definition, "social_hierarchy")
+          }
+          active = {}
+          apply_laws(body, country, effects, laws, active)
+          countries[tag][:laws] = groups.filter_map do |g|
+            next if g[:hierarchy] && g[:hierarchy] != country[:hierarchy]
+            active[g[:id]] || g[:laws].find { |law| visible_if[law].nil? || law_condition?(visible_if[law], country, unknown: true) }
+          end
+        end
+      end
+    end
+    [groups.reject { |g| g[:laws].empty? }.map { |g| g.except(:hierarchy) }, laws]
+  end
+
+  def apply_laws(block, country, effects, laws, active)
+    taken = false # whether the current if / else_if chain already ran a branch
+    block.each do |k, _, v|
+      case k
+      when "activate_law"
+        law = v.delete_prefix("law_type:")
+        active[laws[law][:group]] = law if laws[law]
+      when "if", "else_if"
+        taken = false if k == "if"
+        next if taken
+        if (taken = law_condition?(Vic3Script.value(v, "limit") || [], country))
+          apply_laws(v.reject { |key, _, _| key == "limit" }, country, effects, laws, active)
+        end
+      when "else"
+        apply_laws(v, country, effects, laws, active) unless taken
+        taken = true
+      else
+        apply_laws(effects[k], country, effects, laws, active) if effects.key?(k) && v == "yes"
+      end
+    end
+  end
+
+  # The conditions the starting laws use; anything else is reported and
+  # treated as false, so a game patch adding one shows up here. For a law's
+  # is_visible (picking a group's default) unknown conditions count as true
+  # instead: most laws show to everyone.
+  def law_condition?(limit, country, unknown: false)
+    limit.all? do |k, _, v|
+      case k
+      when "country_is_islamic" then ISLAMIC.include?(country[:religion]) == (v == "yes")
+      when "is_country_type" then country[:type] == v
+      when "has_dlc_feature" then true
+      else
+        next true if unknown
+        (@unknown_law_conditions ||= Set.new).add?(k) && warn("Laws: treating unknown condition #{k} as false")
+        false
+      end
+    end
   end
 
   def extract_mobilization
