@@ -614,10 +614,12 @@ class Vic3Extractor
   # Supremacy. (unlocking_laws within the same group don't count: they're
   # the path a reform takes.) Navy model only exists for countries with a
   # coastal province. Checked law by law, both ways, against a save made at
-  # the start (1836.1.3): all 443 countries' laws match but one -- Sakuye
-  # (SKY) gets Merchant Navy here; one of its provinces borders the sea on
-  # the province map, yet the game treats it as landlocked.
+  # the start (1836.1.3): every law of all 443 countries matches.
   ISLAMIC = %w[sunni shiite ibadi].freeze
+  # Countries the game treats as landlocked although one of their provinces
+  # borders the sea on the province map -- found by that check, the game's
+  # reason isn't in the files. Sakuye (Kenya) has no navy law in the save.
+  LANDLOCKED = %w[SKY].freeze
 
   def extract_laws(countries)
     groups = read(@game.join("common/law_groups/00_laws.txt")).select { |_, _, b| b.is_a?(Array) }.map do |id, _, body|
@@ -677,7 +679,7 @@ class Vic3Extractor
             type: Vic3Script.value(definition, "country_type"),
             religion: Vic3Script.value(definition, "religion") || culture_religion[Vic3Script.list(Vic3Script.value(definition, "cultures")).first],
             hierarchy: Vic3Script.value(definition, "social_hierarchy"),
-            coastal: coastal_tags.include?(tag)
+            coastal: coastal_tags.include?(tag) && !LANDLOCKED.include?(tag)
           }
           active = {}
           apply_laws(body, country, effects, laws, active)
