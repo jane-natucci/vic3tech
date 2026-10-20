@@ -461,6 +461,7 @@
 
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
+    footer .more { margin-top: 3px; }
 
     /* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
        mobilization" -> "Units", so the header stays one row. */
@@ -626,12 +627,16 @@
     </section>
 
     <footer>
-      Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>; Victoria 3 is © Paradox Interactive.
-      Modern emoji flags are only used to tell countries apart (on devices without flag emoji, flag images from
-      <a href="https://github.com/twitter/twemoji">Twemoji</a>, CC BY 4.0).
-      Also see <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> and
-      <a href="https://achievements.jane.berlin">achievement chains</a> for Victoria 3.
-      Playing EU4? <a href="/eu4/">How unit pips evolve</a>.
+      <div>
+        Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>;
+        Victoria 3 is © Paradox Interactive. Flags are Twemoji
+        (<a href="https://github.com/twitter/twemoji">CC BY 4.0</a>) on devices without flag emoji.
+      </div>
+      <div class="more">
+        More from the same maker: <a href="https://eu5tech.jane.berlin/">EU5 Tech Tree</a> ·
+        <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> ·
+        <a href="https://achievements.jane.berlin">Achievement chains</a>
+      </div>
     </footer>
   </main>
 
