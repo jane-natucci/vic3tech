@@ -1951,6 +1951,21 @@
       } else {
         fetch("https://jane.berlin/beacon", { method: "POST", body: payload, keepalive: true });
       }
+
+      // The follow-up: sent once, the first time something on the page moves or is
+      // pressed. Most scripted visits never do (see BeaconController).
+      const events = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "wheel"];
+      const body = JSON.stringify({ event: "engaged", app: "counter", subdomain: location.hostname.split(".")[0], path: location.pathname });
+      const onEvent = () => {
+        if (document.visibilityState !== "visible") return;
+        events.forEach((name) => window.removeEventListener(name, onEvent, true));
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon("https://jane.berlin/beacon", body);
+        } else {
+          fetch("https://jane.berlin/beacon", { method: "POST", body, keepalive: true });
+        }
+      };
+      events.forEach((name) => window.addEventListener(name, onEvent, { capture: true, passive: true }));
     })();
   </script>
 </body>
