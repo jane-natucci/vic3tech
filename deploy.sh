@@ -56,17 +56,22 @@ else
   aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" \
     --cache-control "public, max-age=31536000"
 fi
-# The EU4 page (eu4/, self-contained): its page on every deploy, its game
-# data (eu4/extract.rb's output) only from a full local deploy, like vic3/'s.
-# Neither is versioned, so both are no-cache. Served at /eu4/: the bucket is
-# private, so CloudFront can't map a folder to its index.html -- the page is
-# also stored under the key "eu4/" itself.
+# The EU4 page (eu4tech/, self-contained) is its own site, eu4tech.jane.berlin, with
+# its own bucket: its page on every deploy, its game data (eu4tech/extract.rb's
+# output) only from a full local deploy, like vic3/'s. Neither is versioned, so both
+# are no-cache.
+eu4_bucket="${EU4_BUCKET:-eu4tech.jane.berlin}"
 if [ "${1:-}" != "--code-only" ]; then
-  [ -f eu4/data.json ] || { echo "No eu4/data.json -- run: ruby eu4/extract.rb" >&2; exit 1; }
-  aws s3 cp eu4/data.json "s3://${bucket}/eu4/data.json" --only-show-errors \
+  [ -f eu4tech/data.json ] || { echo "No eu4tech/data.json -- run: ruby eu4tech/extract.rb" >&2; exit 1; }
+  aws s3 cp eu4tech/data.json "s3://${eu4_bucket}/data.json" --only-show-errors \
     --cache-control "no-cache" --content-type "application/json"
 fi
-# (s3api, not "s3 cp": cp reads a destination ending in / as a folder.)
+aws s3 cp eu4tech/index.html "s3://${eu4_bucket}/index.html" --only-show-errors \
+  --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+# The old address, vic3tech.jane.berlin/eu4/, now only redirects there. The bucket is
+# private, so CloudFront can't map a folder to its index.html -- the stub is also
+# stored under the key "eu4/" itself. (s3api, not "s3 cp": cp reads a destination
+# ending in / as a folder.)
 for key in eu4/ eu4/index.html; do
   aws s3api put-object --bucket "$bucket" --key "$key" --body eu4/index.html \
     --cache-control "no-cache" --content-type "text/html; charset=utf-8" >/dev/null
