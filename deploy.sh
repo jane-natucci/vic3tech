@@ -56,14 +56,6 @@ else
   aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" \
     --cache-control "public, max-age=31536000"
 fi
-# The old address, vic3tech.jane.berlin/eu4/, now only redirects to eu4tech.jane.berlin
-# (its own repo, github.com/jane-natucci/eu4tech). The bucket is private, so CloudFront can't map a folder to its index.html -- the stub is also
-# stored under the key "eu4/" itself. (s3api, not "s3 cp": cp reads a destination
-# ending in / as a folder.)
-for key in eu4/ eu4/index.html; do
-  aws s3api put-object --bucket "$bucket" --key "$key" --body eu4/index.html \
-    --cache-control "no-cache" --content-type "text/html; charset=utf-8" >/dev/null
-done
 aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
 
