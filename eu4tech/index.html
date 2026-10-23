@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EU4 Unit Pips by Military Tech – Infantry, Cavalry, Artillery &amp; Adm/Dip Tech</title>
-  <meta name="description" content="How Europa Universalis IV units get stronger: every infantry, cavalry and artillery unit's pips by military tech level, unit groups compared (Western, Ottoman, Eastern, Muslim…), and what each adm, dip and mil tech level adds. Free, built from the game files.">
+  <title>EU4 Tech – Countries at Every Start, Mission Trees, National Ideas and Unit Pips</title>
+  <meta name="description" content="Europa Universalis IV read from the game files: every country at each start date (ruler and monarch points, provinces, development, rivals, allies, subjects), national ideas, mission trees, and how units get stronger by military tech.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://eu4tech.jane.berlin/">
 
   <meta property="og:type" content="website">
-  <meta property="og:title" content="EU4 Unit Pips by Military Tech">
-  <meta property="og:description" content="Every EU4 land unit's pips by military tech level, unit groups side by side, and what each adm, dip and mil tech adds — straight from the game files.">
+  <meta property="og:title" content="EU4 Tech – Countries, Mission Trees, National Ideas and Unit Pips">
+  <meta property="og:description" content="Every EU4 country at each start date, its national ideas and mission trees, plus unit pips by military tech and what adm, dip and mil tech add — straight from the game files.">
   <meta property="og:url" content="https://eu4tech.jane.berlin/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="EU4 Unit Pips by Military Tech">
+  <meta name="twitter:title" content="EU4 Tech – Countries, Mission Trees, National Ideas and Unit Pips">
   <meta name="twitter:description" content="Every EU4 land unit's pips by military tech level, unit groups side by side, and what each adm, dip and mil tech adds.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23f4efe4' stroke='%238a2c1f' stroke-width='2'/%3E%3Cdefs%3E%3Cg id='sword' fill='%238a2c1f'%3E%3Cpath d='M16 5.2l1.7 3v11.2h-3.4V8.2z'/%3E%3Crect x='11.4' y='19.4' width='9.2' height='1.9' rx='.9'/%3E%3Crect x='15.1' y='21.3' width='1.8' height='4.2'/%3E%3Ccircle cx='16' cy='26.4' r='1.5'/%3E%3C/g%3E%3C/defs%3E%3Cg transform='translate(16.05 15.4) scale(1.1) translate(-16 -16)'%3E%3Cuse href='%23sword' transform='rotate(45 16 16)'/%3E%3Cuse href='%23sword' transform='rotate(-45 16 16)' stroke='%23f4efe4' stroke-width='.7' paint-order='stroke'/%3E%3C/g%3E%3C/svg%3E">
   <!-- Everything this page needs is in eu4tech/ (this file, extract.rb and the
@@ -46,7 +46,62 @@
     .chips button { font: inherit; font-size: 0.88em; border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 5px 13px; border-radius: 999px; cursor: pointer; }
     .chips button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
     .chips.multi button.on { background: var(--accent-soft); color: var(--ink); border-color: var(--c, var(--accent)); box-shadow: inset 0 0 0 1px var(--c, var(--accent)); }
-    main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 60px; }
+    .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); align-items: start; max-width: 1600px; margin: 0 auto; }
+    main { padding: 18px 20px 60px; min-width: 0; }
+    #side { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 14px 12px 20px 20px; border-right: 1px solid var(--line); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+    #side select, #side input { width: 100%; font: inherit; font-size: 0.9em; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; margin: 0 0 8px; }
+    #side .note { font-size: 0.8em; margin-bottom: 6px; }
+    .country { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 6px; cursor: pointer; font-size: 0.9em; }
+    .country:hover { background: var(--accent-soft); }
+    .country.pinned { background: var(--ink); color: var(--bg); }
+    .country img, .flag { width: 26px; height: 26px; object-fit: contain; }
+    .country .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .country .count { font-size: 0.78em; opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .country.later { opacity: 0.5; }
+    .pick-btn { display: none; font: inherit; font-size: 0.88em; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 5px 13px; border-radius: 999px; cursor: pointer; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .pick-btn { display: inline-block; }
+      #side { display: none; position: static; max-height: 60vh; border-right: 0; border-bottom: 1px solid var(--line); }
+      #side.open { display: block; }
+    }
+
+    /* Country pages */
+    .chead { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+    .chead img { width: 64px; height: 64px; }
+    .chead h2 { font-size: 1.6em; }
+    .chead .sub { color: var(--muted); font-size: 0.9em; }
+    .sections { margin: 12px 0 16px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+    .stat .k { color: var(--muted); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat .v { font-size: 1.5em; font-family: Georgia, serif; font-variant-numeric: tabular-nums; }
+    .stat .s { color: var(--muted); font-size: 0.82em; }
+    .mana { display: inline-flex; gap: 8px; font-family: Georgia, serif; font-size: 1.5em; }
+    .mana b { font-weight: normal; } .mana .a { color: var(--shock); } .mana .d { color: var(--accent); } .mana .m { color: var(--morale); }
+    .bars { display: grid; gap: 4px; font-size: 0.86em; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 34px; gap: 8px; align-items: center; }
+    .bar-row .b { height: 8px; border-radius: 4px; background: var(--accent); }
+    .bar-row .b.t { background: var(--fire); } .bar-row .b.p { background: var(--shock); } .bar-row .b.m { background: var(--morale); }
+    .cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .tags a, a.tagl { color: var(--accent); cursor: pointer; text-decoration: none; }
+    .tags a:hover, a.tagl:hover { text-decoration: underline; }
+    .tags span.sep { color: var(--muted); }
+    dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; font-size: 0.92em; }
+    dl.facts dt { color: var(--muted); } dl.facts dd { margin: 0; }
+    .tree-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; overflow: auto; max-height: 70vh; margin-bottom: 14px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+    .tree-wrap h3 { font-size: 1em; margin: 2px 4px 6px; color: var(--muted); }
+    .mnode rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; rx: 8; }
+    .mnode { cursor: pointer; } .mnode:hover rect, .mnode.sel rect { stroke: var(--accent); }
+    .mnode.sel rect { fill: var(--accent-soft); stroke-width: 2.5; }
+    .mnode text { fill: var(--ink); font-size: 11px; text-anchor: middle; pointer-events: none; }
+    .medge { fill: none; stroke: var(--muted); stroke-width: 1.6; opacity: 0.7; }
+    #mdetail { position: sticky; bottom: 10px; background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 16px; margin-top: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); }
+    .idea { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+    .idea h3 { font-size: 1.02em; margin-bottom: 2px; }
+    .idea .d { color: var(--muted); font-size: 0.82em; margin-bottom: 4px; font-style: italic; }
+    .idea ul { margin: 0; padding-left: 1.1em; font-size: 0.9em; }
+    .idea .n { color: var(--muted); font-size: 0.75em; }
     section { margin-bottom: 34px; }
     section > h2 { font-size: 1.3em; margin-bottom: 4px; }
     .note { color: var(--muted); font-size: 0.88em; margin-bottom: 12px; max-width: 900px; }
@@ -96,11 +151,21 @@
   <header>
     <h1>EU4 tech <small id="version"></small></h1>
     <div class="chips" id="tabs">
+      <button data-tab="country">Country</button>
       <button data-tab="units" class="on">Military units</button>
       <button data-tab="tech">Adm / Dip / Mil tech</button>
     </div>
+    <button type="button" id="pickBtn" class="pick-btn">Choose a country</button>
   </header>
-  <main id="app"></main>
+  <div class="layout">
+    <aside id="side" aria-label="Countries">
+      <select id="dateSel" aria-label="Start date"></select>
+      <input id="csearch" type="search" placeholder="Search any country…" autocomplete="off" aria-label="Search countries">
+      <p class="note" id="sideHint"></p>
+      <div id="countries"></div>
+    </aside>
+    <main id="app"></main>
+  </div>
   <footer>Unofficial fan page. Data comes from the Europa Universalis IV game files<span id="footVersion"></span>; Europa Universalis IV is © Paradox Interactive.</footer>
 
   <script>
@@ -119,7 +184,8 @@
       naval_engagement_width: "Naval engagement width", governing_capacity: "Governing capacity", allowed_idea_groups: "Idea groups",
       administrative_efficiency: "Administrative efficiency", development_cost_modifier: "Development cost" };
     const PERCENT = /efficiency|modifier|maintenance/;
-    const state = { tab: "units", group: "western", compare: ["western", "eastern", "ottoman", "muslim"] };
+    const state = { tab: "units", group: "western", compare: ["western", "eastern", "ottoman", "muslim"], tag: null, section: "overview", date: null };
+    let CD = null, MD = null, ID = null, cBy = {}; // countries, missions and ideas data
     let D, NAMES;
 
     // Compared groups get colours by their place in the selection, so no two clash.
@@ -245,21 +311,170 @@
 
     function render() {
       document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === state.tab));
-      (state.tab === "units" ? renderUnits : renderTech)();
+      renderSide();
+      ({ units: renderUnits, tech: renderTech, country: renderCountry })[state.tab]();
+      writeHash();
     }
 
     document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { state.tab = b.dataset.tab; render(); } });
+    // --- Countries ----------------------------------------------------------------------------------
+    // Hash: #units, #tech, #TAG, #TAG/missions, #TAG/ideas, with the start date as a last part (#FRA/overview/1492.1.1).
+    function readHash() {
+      const [a, sec, date] = decodeURIComponent(location.hash.slice(1)).split("/");
+      if (a === "units" || a === "tech") state.tab = a;
+      else if (a && cBy[a]) { state.tab = "country"; state.tag = a; state.section = ["overview", "missions", "ideas"].includes(sec) ? sec : "overview"; }
+      if (CD) state.date = date && CD.dates.includes(date) ? date : CD.dates[0];
+    }
+    function writeHash() {
+      const h = state.tab === "country" && state.tag ? [state.tag, state.section, state.date !== CD?.dates[0] ? state.date : ""].join("/").replace(/\/+$/, "") : state.tab === "country" ? "" : state.tab;
+      if (location.hash.slice(1) !== h) history.replaceState(null, "", h ? "#" + h : location.pathname);
+    }
+    const devOf = a => a ? a.tax + a.prod + a.man : 0;
+    const dateLabel = d => d.split(".")[0];
+    const at = c => c?.at[state.date];
+    const nm = k => CD.names[k] || (k || "").replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
+    const cname = tag => cBy[tag]?.name || tag;
+    const link = tag => cBy[tag] ? `<a class="tagl" data-tag="${tag}">${esc(cname(tag))}</a>` : esc(tag);
+    const links = tags => tags.length ? tags.map(link).join('<span class="sep">, </span>') : '<span style="color:var(--muted)">none</span>';
+
+    function renderSide() {
+      if (!CD) return;
+      const q = (document.getElementById("csearch").value || "").trim().toLowerCase();
+      const list = CD.countries.filter(c => q ? (c.name + " " + c.tag).toLowerCase().includes(q) : c.at[state.date]);
+      document.getElementById("sideHint").textContent = q ? `${list.length} matching (dimmed ones don't exist in ${dateLabel(state.date)})` : `${list.length} countries in ${dateLabel(state.date)}, by development`;
+      const box = document.getElementById("countries"), top = box.scrollTop;
+      box.innerHTML = list.slice(0, 400).map(c => `<div class="country${c.tag === state.tag ? " pinned" : ""}${c.at[state.date] ? "" : " later"}" data-tag="${c.tag}" role="button" tabindex="0">${c.flag ? `<img src="flags/${c.tag}.png" alt="" loading="lazy">` : "<span></span>"}<span class="name">${esc(c.name)}</span><span class="count" title="Total development">${c.at[state.date] ? devOf(c.at[state.date]) : ""}</span></div>`).join("") || '<p class="note">No country matches.</p>';
+      box.scrollTop = top;
+    }
+    function pick(tag) {
+      state.tag = tag; state.tab = "country";
+      document.getElementById("side").classList.remove("open");
+      render(); window.scrollTo({ top: 0 });
+    }
+    const loadJson = url => fetch(url).then(r => { if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); });
+
+    const MONTHS = null;
+    function bar(label, value, max, cls = "") { return `<div class="bar-row"><span>${esc(label)}</span><span class="b ${cls}" style="width:${Math.max(2, 100 * value / (max || 1))}%"></span><span>${value}</span></div>`; }
+    function renderCountry() {
+      if (!CD) { app.innerHTML = '<p class="note">Loading countries…</p>'; return; }
+      const c = cBy[state.tag];
+      if (!c) {
+        app.innerHTML = `<section><h2>Countries</h2><p class="note">Pick a country on the left to see how it starts: its ruler and their monarch points, provinces and development, rivals, allies and subjects, national ideas and mission trees, at any of the game's start dates.</p></section>`;
+        return;
+      }
+      const a = at(c);
+      const head = `<div class="chead">${c.flag ? `<img src="flags/${c.tag}.png" alt="">` : ""}<div><h2>${esc(c.name)}</h2><div class="sub">${c.tag} · ${a ? `${esc(nm(a.government))}${a.rank ? ` · rank ${a.rank}` : ""} · ${esc(nm(a.religion))} · ${esc(nm(a.culture))}` : `doesn't exist at the ${dateLabel(state.date)} start`}</div></div></div>`;
+      const sections = `<div class="chips sections" id="sections">${[["overview", "Overview"], ["missions", "Mission trees"], ["ideas", "National ideas"]].map(([k, t]) => `<button data-sec="${k}" class="${state.section === k ? "on" : ""}">${t}</button>`).join("")}</div>`;
+      app.innerHTML = head + sections + '<div id="cbody"></div>';
+      const body = document.getElementById("cbody");
+      if (state.section === "missions") return renderMissions(c, body);
+      if (state.section === "ideas") return renderIdeas(c, body);
+      if (!a) { body.innerHTML = `<p class="note">${esc(c.name)} has no provinces at this start. Pick another date on the left.</p>`; return; }
+      const grp = CD.tech_groups[a.tech_group], dev = devOf(a), tot = a.tax + a.prod + a.man || 1;
+      const person = (p, role) => p ? `<div class="stat"><div class="k">${role}</div><div class="v">${esc(p.name || "Unnamed")}</div><div class="s">${p.dynasty ? esc(p.dynasty) + " · " : ""}${p.born ? `born ${p.born}${state.date ? `, ${parseInt(state.date) - p.born} years old` : ""}` : ""}</div>${p.adm != null ? `<div class="mana" title="administrative / diplomatic / military"><b class="a">${p.adm}</b><b class="d">${p.dip}</b><b class="m">${p.mil}</b></div><div class="s">${p.adm + p.dip + p.mil} points in total</div>` : ""}</div>` : "";
+      const goods = a.goods.map(([g, d]) => bar(nm(g), d, a.goods[0][1])).join("");
+      const faiths = a.religions.map(([r, d]) => bar(nm(r), d, a.religions[0][1])).join("");
+      body.innerHTML = `
+        <div class="stats">
+          <div class="stat"><div class="k">Provinces</div><div class="v">${a.provinces}</div><div class="s">${a.cities} cities${a.hre ? ` · ${a.hre} in the HRE` : ""}</div></div>
+          <div class="stat"><div class="k">Development</div><div class="v">${dev}</div><div class="s"><span style="color:var(--fire)">${a.tax} tax</span> · <span style="color:var(--shock)">${a.prod} production</span> · <span style="color:var(--morale)">${a.man} manpower</span></div></div>
+          ${person(a.ruler, "Ruler")}${person(a.heir, "Heir")}
+          <div class="stat"><div class="k">Capital</div><div class="v">${esc(a.capital || "–")}</div><div class="s">${esc(nm(a.government))}</div></div>
+          <div class="stat"><div class="k">Technology</div><div class="v">${esc(grp ? grp.name : nm(a.tech_group))}</div><div class="s">${grp && grp.start_level != null && state.date === CD.dates[0] ? `adm, dip and mil tech all start at level ${grp.start_level} · ` : ""}<a class="tagl" data-unitgroup="${esc(grp ? grp.unit_type : a.tech_group)}">its military units</a></div></div>
+        </div>
+        <div class="cols">
+          <div class="card"><h3>Development split</h3><div class="bars">${bar("Base tax", a.tax, Math.max(a.tax, a.prod, a.man), "t")}${bar("Base production", a.prod, Math.max(a.tax, a.prod, a.man), "p")}${bar("Base manpower", a.man, Math.max(a.tax, a.prod, a.man), "m")}</div><p class="note" style="margin:8px 0 0">${Math.round(100 * a.tax / tot)}% / ${Math.round(100 * a.prod / tot)}% / ${Math.round(100 * a.man / tot)}% of ${dev}.</p></div>
+          <div class="card"><h3>Trade goods (by development)</h3><div class="bars">${goods || "–"}</div></div>
+          <div class="card"><h3>Religions (by development)</h3><div class="bars">${faiths || "–"}</div></div>
+          <div class="card"><h3>Diplomacy at the start</h3><dl class="facts tags">
+            ${a.overlord ? `<dt>Subject of</dt><dd>${link(a.overlord.tag)} <span style="color:var(--muted)">(${esc(nm(a.overlord.type))})</span></dd>` : ""}
+            ${a.subjects.length ? `<dt>Subjects</dt><dd>${a.subjects.map(x => `${link(x.tag)} <span style="color:var(--muted)">(${esc(nm(x.type))})</span>`).join(", ")}</dd>` : ""}
+            <dt>Allies</dt><dd>${links(a.allies)}</dd>
+            ${a.guarantees.length ? `<dt>Guarantees</dt><dd>${links(a.guarantees)}</dd>` : ""}
+            ${a.marriages.length ? `<dt>Royal marriages</dt><dd>${links(a.marriages)}</dd>` : ""}
+            <dt>Historical rivals</dt><dd>${links(a.rivals)}</dd>
+            <dt>Historical friends</dt><dd>${links(a.friends)}</dd></dl></div>
+          <div class="card"><h3>Government and culture</h3><dl class="facts">
+            <dt>Government</dt><dd>${esc(nm(a.government))}</dd>
+            ${a.reforms.length ? `<dt>Reforms</dt><dd>${a.reforms.map(r => esc(nm(r))).join(", ")}</dd>` : ""}
+            <dt>Primary culture</dt><dd>${esc(nm(a.culture))}</dd>
+            ${a.accepted.length ? `<dt>Accepted</dt><dd>${a.accepted.map(r => esc(nm(r))).join(", ")}</dd>` : ""}
+            <dt>Religion</dt><dd>${esc(nm(a.religion))}</dd></dl></div>
+        </div>
+        <p class="note" style="margin-top:12px">Armies and fleets aren't listed: the game builds each country's starting forces from its force limit when a campaign begins, rather than reading them from a file.</p>`;
+    }
+
+    // --- Missions and ideas (loaded when first opened) ---------------------------------------------------
+    const MW = 160, MH = 52, MDX = 176, MDY = 76;
+    let missionSel = null;
+    async function renderMissions(c, body) {
+      body.innerHTML = '<p class="note">Loading…</p>';
+      try { MD ||= await loadJson("missions.json"); } catch (e) { body.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+      const ids = MD.by_tag[c.tag] || [];
+      if (!ids.length) { body.innerHTML = `<p class="note">${esc(c.name)} has no mission trees of its own in the game files (it may use the generic ones, which aren't listed here).</p>`; return; }
+      body.innerHTML = `<p class="note">${esc(c.name)}'s mission trees for a player with every DLC. Branches the game picks between depending on the campaign (for example the Holy Roman Empire paths) are all shown. Click a mission for its text.</p>` +
+        ids.map((id, i) => {
+          const t = MD.trees[id], ms = t.missions, by = Object.fromEntries(ms.map(m => [m.key, m]));
+          const W = (Math.max(...ms.map(m => m.x)) + 1) * MDX + 16, H = (Math.max(...ms.map(m => m.y)) + 1) * MDY + 8;
+          const edges = ms.flatMap(m => m.req.filter(r => by[r]).map(r => { const p = by[r], x1 = 8 + p.x * MDX + MW / 2, y1 = 4 + p.y * MDY + MH, x2 = 8 + m.x * MDX + MW / 2, y2 = 4 + m.y * MDY, my = (y1 + y2) / 2; return `<path class="medge" d="M${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}"/>`; })).join("");
+          const nodes = ms.map(m => `<g class="mnode${m.key === missionSel ? " sel" : ""}" data-m="${m.key}" transform="translate(${8 + m.x * MDX} ${4 + m.y * MDY})"><rect width="${MW}" height="${MH}"/>${wrap(m.title, 24).map((l, j) => `<text x="${MW / 2}" y="${20 + j * 13}">${esc(l)}</text>`).join("")}</g>`).join("");
+          return `<div class="tree-wrap"><h3>Tree ${i + 1} · ${ms.length} missions</h3><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="group" aria-label="Mission tree ${i + 1}">${edges}${nodes}</svg></div>`;
+        }).join("") + `<div id="mdetail" hidden></div>`;
+      showMission();
+    }
+    function wrap(text, n) { const out = []; let line = ""; for (const w of text.split(" ")) { if ((line + " " + w).trim().length > n && line) { out.push(line); line = w; } else line = (line + " " + w).trim(); } out.push(line); return out.slice(0, 3); }
+    function showMission() {
+      const box = document.getElementById("mdetail"); if (!box) return;
+      const m = missionSel && Object.values(MD.trees).flatMap(t => t.missions).find(x => x.key === missionSel);
+      box.hidden = !m;
+      if (m) box.innerHTML = `<h3 style="margin-bottom:2px">${esc(m.title)}</h3>${m.desc ? `<p style="font-size:0.92em">${esc(m.desc)}</p>` : '<p class="note">No description in the game files.</p>'}${m.req.length ? `<p class="note" style="margin:4px 0 0">Requires: ${m.req.map(r => esc((Object.values(MD.trees).flatMap(t => t.missions).find(x => x.key === r) || {}).title || r)).join(", ")}</p>` : ""}`;
+    }
+    const modText = m => m.flag ? esc(m.label) : `${m.value > 0 ? "+" : ""}${m.kind === "percent" ? Math.round(m.value * 1000) / 10 + "%" : Math.round(m.value * 100) / 100} ${esc(m.label)}`;
+    async function renderIdeas(c, body) {
+      body.innerHTML = '<p class="note">Loading…</p>';
+      try { ID ||= await loadJson("ideas.json"); } catch (e) { body.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+      const g = ID.by_tag[c.tag];
+      if (!g) { body.innerHTML = `<p class="note">${esc(c.name)} has no national ideas of its own in the game files; it picks from the generic idea groups.</p>`; return; }
+      const list = ms => ms.length ? `<ul>${ms.map(m => `<li>${modText(m)}</li>`).join("")}</ul>` : "";
+      body.innerHTML = `<h2 style="margin-bottom:4px">${esc(g.name)}</h2><p class="note">Which modifiers are percentages is a best guess, since the game doesn't list that in a file.</p>
+        <div class="cols"><div class="idea"><h3>Traditions</h3>${list(g.start)}</div><div class="idea"><h3>Ambition</h3>${list(g.bonus)}</div>
+        ${g.ideas.map((i, n) => `<div class="idea"><h3>${esc(i.name)} <span class="n">idea ${n + 1}</span></h3>${i.desc ? `<div class="d">${esc(i.desc)}</div>` : ""}${list(i.mods)}</div>`).join("")}</div>`;
+    }
+
+    document.getElementById("side").addEventListener("click", e => { const r = e.target.closest("[data-tag]"); if (r) pick(r.dataset.tag); });
+    document.getElementById("csearch").addEventListener("input", renderSide);
+    document.getElementById("dateSel").addEventListener("change", e => { state.date = e.target.value; render(); });
+    document.getElementById("pickBtn").addEventListener("click", () => document.getElementById("side").classList.toggle("open"));
     app.addEventListener("click", e => {
+      const t = e.target.closest("[data-tag]"); if (t) { pick(t.dataset.tag); return; }
+      const sec = e.target.closest("[data-sec]"); if (sec) { state.section = sec.dataset.sec; render(); return; }
+      const m = e.target.closest("[data-m]"); if (m) { missionSel = m.dataset.m === missionSel ? null : m.dataset.m; document.querySelectorAll(".mnode").forEach(n => n.classList.toggle("sel", n.dataset.m === missionSel)); showMission(); return; }
+      const ug = e.target.closest("[data-unitgroup]"); if (ug) { if (D.groups.includes(ug.dataset.unitgroup)) state.group = ug.dataset.unitgroup; state.tab = "units"; render(); window.scrollTo({ top: 0 }); return; }
       const c = e.target.closest("#compare button"), g = e.target.closest("#group button");
       if (c) { const k = c.dataset.g; state.compare = state.compare.includes(k) ? state.compare.filter(x => x !== k) : [...state.compare, k]; if (!state.compare.length) state.compare = [k]; render(); }
       if (g) { state.group = g.dataset.g; render(); }
     });
 
-    fetch("data.json?v=" + Date.now()).then(r => { if (!r.ok) throw new Error(`data.json: HTTP ${r.status}`); return r.json(); }).then(data => {
+    Promise.all([
+      fetch("data.json?v=" + Date.now()).then(r => { if (!r.ok) throw new Error(`data.json: HTTP ${r.status}`); return r.json(); }),
+      loadJson("countries.json").catch(() => null), // the tech pages work without it
+    ]).then(([data, countries]) => {
       D = data; NAMES = data.names || {};
       for (const u of D.units) NAMES[u.id] ??= u.name;
       document.getElementById("version").textContent = data.game_version ? `game ${data.game_version}` : "";
       if (data.game_version) document.getElementById("footVersion").textContent = ` (version ${data.game_version})`;
+      if (countries) {
+        CD = countries;
+        for (const c of CD.countries) cBy[c.tag] = c;
+        state.date = CD.dates[0];
+        document.getElementById("dateSel").innerHTML = CD.dates.map(d => `<option value="${d}">${d.split(".")[0]}${d === CD.dates[0] ? " (default start)" : ""} – ${d}</option>`).join("");
+        readHash();
+      } else {
+        document.getElementById("side").remove(); document.getElementById("pickBtn").remove(); document.querySelector('[data-tab="country"]').remove();
+        document.querySelector(".layout").style.display = "block";
+      }
+      if (CD) document.getElementById("dateSel").value = state.date;
+      window.addEventListener("hashchange", () => { readHash(); if (CD) document.getElementById("dateSel").value = state.date; render(); });
       render();
     }).catch(e => { app.innerHTML = `<p class="err">Couldn't load the data (${esc(e.message)}). Run <code>ruby eu4tech/extract.rb</code> first.</p>`; });
   </script>

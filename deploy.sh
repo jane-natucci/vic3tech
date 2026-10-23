@@ -65,6 +65,15 @@ if [ "${1:-}" != "--code-only" ]; then
   [ -f eu4tech/data.json ] || { echo "No eu4tech/data.json -- run: ruby eu4tech/extract.rb" >&2; exit 1; }
   aws s3 cp eu4tech/data.json "s3://${eu4_bucket}/data.json" --only-show-errors \
     --cache-control "no-cache" --content-type "application/json"
+  # Countries, missions and national ideas (eu4tech/extract_countries.rb) are big, so they
+  # are stored gzipped; the flags are small PNGs.
+  for f in countries missions ideas; do
+    [ -f "eu4tech/${f}.json" ] || { echo "No eu4tech/${f}.json -- run: ruby eu4tech/extract_countries.rb" >&2; exit 1; }
+    gzip -9c "eu4tech/${f}.json" | aws s3 cp - "s3://${eu4_bucket}/${f}.json" --only-show-errors \
+      --cache-control "no-cache" --content-type "application/json" --content-encoding gzip
+  done
+  aws s3 sync eu4tech/flags/ "s3://${eu4_bucket}/flags/" --delete --only-show-errors \
+    --cache-control "public, max-age=86400" --content-type "image/png"
 fi
 aws s3 cp eu4tech/index.html "s3://${eu4_bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
