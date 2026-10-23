@@ -56,29 +56,8 @@ else
   aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" \
     --cache-control "public, max-age=31536000"
 fi
-# The EU4 page (eu4tech/, self-contained) is its own site, eu4tech.jane.berlin, with
-# its own bucket: its page on every deploy, its game data (eu4tech/extract.rb's
-# output) only from a full local deploy, like vic3/'s. Neither is versioned, so both
-# are no-cache.
-eu4_bucket="${EU4_BUCKET:-eu4tech.jane.berlin}"
-if [ "${1:-}" != "--code-only" ]; then
-  [ -f eu4tech/data.json ] || { echo "No eu4tech/data.json -- run: ruby eu4tech/extract.rb" >&2; exit 1; }
-  aws s3 cp eu4tech/data.json "s3://${eu4_bucket}/data.json" --only-show-errors \
-    --cache-control "no-cache" --content-type "application/json"
-  # Countries, missions and national ideas (eu4tech/extract_countries.rb) are big, so they
-  # are stored gzipped; the flags are small PNGs.
-  for f in countries missions ideas; do
-    [ -f "eu4tech/${f}.json" ] || { echo "No eu4tech/${f}.json -- run: ruby eu4tech/extract_countries.rb" >&2; exit 1; }
-    gzip -9c "eu4tech/${f}.json" | aws s3 cp - "s3://${eu4_bucket}/${f}.json" --only-show-errors \
-      --cache-control "no-cache" --content-type "application/json" --content-encoding gzip
-  done
-  aws s3 sync eu4tech/flags/ "s3://${eu4_bucket}/flags/" --delete --only-show-errors \
-    --cache-control "public, max-age=86400" --content-type "image/png"
-fi
-aws s3 cp eu4tech/index.html "s3://${eu4_bucket}/index.html" --only-show-errors \
-  --cache-control "no-cache" --content-type "text/html; charset=utf-8"
-# The old address, vic3tech.jane.berlin/eu4/, now only redirects there. The bucket is
-# private, so CloudFront can't map a folder to its index.html -- the stub is also
+# The old address, vic3tech.jane.berlin/eu4/, now only redirects to eu4tech.jane.berlin
+# (its own repo, github.com/jane-natucci/eu4tech). The bucket is private, so CloudFront can't map a folder to its index.html -- the stub is also
 # stored under the key "eu4/" itself. (s3api, not "s3 cp": cp reads a destination
 # ending in / as a folder.)
 for key in eu4/ eu4/index.html; do
