@@ -6,7 +6,13 @@
 require_relative "vic3_script"
 
 class CoaRules
-  Facts = Struct.new(:tag, :laws, :cultures, keyword_init: true)
+  # Pacts that make one country the subject of another (the rest, such as a shared market, don't).
+  SUBJECT_PACTS = %w[colony dominion personal_union protectorate puppet chartered_company tributary vassal].freeze
+
+  Facts = Struct.new(:tag, :laws, :cultures, :scope, keyword_init: true)
+
+  # Facts of every existing country by tag: set by the caller, for rules that look at an overlord.
+  attr_writer :all_facts
 
   def initialize(game, existing_tags)
     @existing = existing_tags
@@ -18,6 +24,7 @@ class CoaRules
     Dir[game.join("common/flag_definitions/*.txt").to_s].sort.each do |f|
       Vic3Script.parse(File.read(f)).each { |k, _, v| @lists[k] = v if k && v.is_a?(Array) && !k.start_with?("@") }
     end
+    @pacts = start_pacts(game)
     @names = Hash.new { |h, k| h[k] = [] }
     Dir[game.join("common/dynamic_country_names/*.txt").to_s].sort.each do |f|
       Vic3Script.parse(File.read(f)).each do |tag, _, body|
@@ -52,12 +59,78 @@ class CoaRules
       next unless trigger.nil? || holds?(trigger, facts) == true
 
       priority = Vic3Script.value(d, "priority").to_f
-      best = [priority, Vic3Script.value(d, "name"), Vic3Script.value(d, "adjective")] if best.nil? || priority > best.first
+      best = [priority, Vic3Script.value(d, "name"), Vic3Script.value(d, "adjective"), Vic3Script.value(d, "use_overlord_prefix") == "yes"] if best.nil? || priority > best.first
     end
-    best && best[1] ? [ best[1], best[2] ] : nil
+    best && best[1] ? [ best[1], best[2], best[3] && direct_overlord(facts.tag) ] : nil
+  end
+
+  # The country that holds this one as a subject at the start, if any.
+  def direct_overlord(tag) = @pacts.find { |_, sub, t| sub == tag && SUBJECT_PACTS.include?(t) }&.first
+
+  # True when a dynamic name's trigger can't be judged from what we know (so the plain name may be wrong).
+  def dynamic_name_unsure?(facts)
+    @names[facts.tag].any? do |d|
+      trigger = Vic3Script.value(d, "trigger")
+      trigger && holds?(trigger, facts).nil?
+    end
   end
 
   private
+
+  # [overlord, subject, type] for every subject relationship the game sets up at the start.
+  def start_pacts(game)
+    pacts = []
+    walk = lambda do |block, owner|
+      block.each do |k, _, v|
+        next unless v.is_a?(Array)
+
+        if k =~ /\Ac:(\w+)\z/
+          walk.call(v, $1)
+        elsif k == "create_diplomatic_pact" && owner
+          pacts << [ owner, Vic3Script.value(v, "country").to_s.delete_prefix("c:"), Vic3Script.value(v, "type") ]
+        else
+          walk.call(v, owner)
+        end
+      end
+    end
+    Dir[game.join("common/history/diplomacy/00_subject_relationships.txt").to_s].each { |f| walk.call(Vic3Script.parse(File.read(f)), nil) }
+    pacts
+  end
+
+  # The tag a scope reference points at: c:GBR, scope:actor or this.
+  def tag_of(ref, facts)
+    case ref.to_s
+    when /\Ac:(\w+)\z/ then $1
+    when "scope:actor", "this" then facts.tag
+    end
+  end
+
+  # Does any country above this one in the chain of overlords satisfy the block?
+  def any_overlord?(block, facts)
+    return nil unless @all_facts
+
+    seen = []
+    tag = facts.tag
+    while (over = direct_overlord(tag)) && !seen.include?(over)
+      seen << over
+      tag = over
+      f = @all_facts[over] or return nil
+      return true if holds?(block, f) == true
+    end
+    false
+  end
+
+  def pact?(block, facts)
+    me = facts.scope || facts.tag
+    other = tag_of(Vic3Script.value(block, "who"), facts)
+    type = Vic3Script.value(block, "type")
+    return nil unless other && type
+
+    initiator = Vic3Script.value(block, "is_initiator")
+    @pacts.any? do |over, sub, t|
+      t == type && (initiator == "yes" ? (over == me && sub == other) : initiator == "no" ? (over == other && sub == me) : (over == me && sub == other || over == other && sub == me))
+    end
+  end
 
   # The flag definitions of a tag's own list (and any lists it includes) and of DEFAULT.
   def definitions(tag, seen = [])
@@ -96,9 +169,20 @@ class CoaRules
     when "has_law", "has_law_or_variant" then facts.laws.include?(value.to_s.delete_prefix("law_type:"))
     when "country_has_primary_culture" then facts.cultures.include?(value.to_s.delete_prefix("cu:"))
     when "exists" then value == "scope:actor" ? true : (value.to_s.start_with?("c:") ? @existing.include?(value.delete_prefix("c:")) : nil)
-    when "scope:actor" then value.is_a?(Array) ? holds?(value, facts) : nil
-    when "is_subject", "is_secessionist", "is_revolutionary", "is_revolutionary_or_secessionist", "has_variable", "is_subject_type" then value == "no"
-    when /\Ac:(\w+)\z/ then value == "this" ? facts.tag == $1 : nil
+    when "scope:actor" then value.is_a?(Array) ? holds?(value, facts.dup.tap { |f| f.scope = nil }) : nil
+    when "is_secessionist", "is_revolutionary", "is_revolutionary_or_secessionist", "has_variable" then value == "no"
+    when "is_subject_type" then @pacts.any? { |_, sub, t| sub == facts.tag && t == value.to_s.delete_prefix("subject_type_") }
+    when "is_subject" then direct_overlord(facts.tag).nil? == (value == "no")
+    when "is_subject_of", "is_direct_subject_of"
+      (over = tag_of(value, facts)) ? @pacts.any? { |o, sub, t| o == over && sub == facts.tag && SUBJECT_PACTS.include?(t) } : nil
+    when "any_overlord_or_above" then value.is_a?(Array) ? any_overlord?(value, facts) : nil
+    when "has_government_type" then value == "gov_chartered_company" ? @pacts.any? { |_, sub, t| sub == facts.tag && t == "chartered_company" } : nil
+    when "owns_entire_state_region" then false # nobody holds a whole region of someone else's at the start
+    when "has_diplomatic_pact" then value.is_a?(Array) ? pact?(value, facts) : nil
+    when /\Ac:(\w+)\z/
+      if value == "this" then facts.tag == $1
+      elsif value.is_a?(Array) then holds?(value, facts.dup.tap { |f| f.scope = $1 })
+      end
     else
       if @triggers.key?(key) && %w[yes no].include?(value)
         r = holds?(@triggers[key], facts)

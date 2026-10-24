@@ -344,8 +344,8 @@ tags.each do |tag|
   Dir.mktmpdir("flag") do |dir|
     recipe = recipe_for(tag)
     final = COA.key?(recipe) ? render(recipe, dir) : map_colour_tile(tag, dir)
-    run("magick", final, "-resize", "#{W}x#{H}", "-strip", png(OUT.join("#{tag}.png")))
-    run("magick", final, "-filter", "Lanczos", "-resize", SMALL, "-strip", png(OUT.join("s", "#{tag}.png")))
+    run("magick", final, "-resize", "#{W}x#{H}", "-strip", "-define", "png:exclude-chunk=date,time", png(OUT.join("#{tag}.png")))
+    run("magick", final, "-filter", "Lanczos", "-resize", SMALL, "-strip", "-define", "png:exclude-chunk=date,time", png(OUT.join("s", "#{tag}.png")))
     ok << tag
   rescue StandardError => e
     failed[tag] = e.message[0, 120]

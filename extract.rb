@@ -328,25 +328,32 @@ class Vic3Extractor
 
   def use_dynamic_names(countries)
     rules = CoaRules.new(@game, countries.keys.to_set)
+    facts = countries.select { |_, c| c[:exists] }.to_h do |tag, c|
+      cultures = Vic3Script.list(Vic3Script.value(country_definitions[tag] || [], "cultures"))
+      [ tag, CoaRules::Facts.new(tag: tag, laws: c[:laws].to_set, cultures: cultures.to_set) ]
+    end
+    rules.all_facts = facts
     changed = []
-    countries.each_value do |c|
-      next unless c[:exists]
-
-      if NAME_OVERRIDES.key?(c[:tag])
-        c[:name] = NAME_OVERRIDES[c[:tag]]
+    unsure = []
+    facts.each do |tag, f|
+      c = countries[tag]
+      if NAME_OVERRIDES.key?(tag)
+        c[:name] = NAME_OVERRIDES[tag]
         next
       end
-      next if KEEP_PLAIN_NAME.include?(c[:tag])
+      next if KEEP_PLAIN_NAME.include?(tag)
 
-      cultures = Vic3Script.list(Vic3Script.value(country_definitions[c[:tag]] || [], "cultures"))
-      name_key, = rules.dynamic_name(CoaRules::Facts.new(tag: c[:tag], laws: c[:laws].to_set, cultures: cultures.to_set))
+      unsure << tag if rules.dynamic_name_unsure?(f)
+      name_key, _adjective, overlord = rules.dynamic_name(f)
       name = name_key && text(name_key)
+      name = "#{text("#{overlord}_ADJ")} #{name}" if name && overlord && text("#{overlord}_ADJ")
       next unless name && name != c[:name]
 
       changed << "#{c[:name]} -> #{name}"
       c[:name] = name
     end
     puts "Dynamic names used for #{changed.size} countries (#{changed.first(8).join(', ')}...)"
+    puts "Names the rules can't fully judge (check these by hand): #{unsure.join(', ')}" if unsure.any?
   end
 
   def country_definitions
