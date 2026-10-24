@@ -125,7 +125,7 @@ class Vic3Extractor
 
   # Country name -> tag, for other pages that mention countries by name and want to link here
   # (paradox-scores does this for achievement texts). Aliases cover how texts say a name.
-  LINK_ALIASES = { "USA" => "USA", "Ottoman Empire" => "TUR", "Great Qing" => "CHI", "British India Company" => "BIC" }.freeze
+  LINK_ALIASES = { "USA" => "USA", "Ottoman Empire" => "TUR", "Great Qing" => "CHI", "British India Company" => "BIC", "Sikh Empire" => "PAN" }.freeze
 
   def write_links(countries)
     tags = countries.map { |c| c[:tag] }.to_set
