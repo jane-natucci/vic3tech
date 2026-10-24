@@ -73,9 +73,8 @@ else
   aws s3 cp vic3/links.json "s3://${bucket}/links.json" --only-show-errors \
     --cache-control "public, max-age=3600" --content-type "application/json"
 fi
-# The country pages have no file extension, so they say they are HTML themselves. (A plain copy, not a sync: the CI
-# role may write to the bucket but not list it.)
-aws s3 cp "$tmp/seo/country" "s3://${bucket}/country" --recursive --only-show-errors \
+# The country pages have no file extension, so they say they are HTML themselves; --delete drops countries that no longer have a page.
+aws s3 sync "$tmp/seo/country" "s3://${bucket}/country" --delete --only-show-errors \
   --content-type "text/html; charset=utf-8" --cache-control "public, max-age=3600"
 aws s3 cp "$tmp/seo/sitemap.xml" "s3://${bucket}/sitemap.xml" --only-show-errors \
   --cache-control "public, max-age=3600" --content-type "application/xml"
