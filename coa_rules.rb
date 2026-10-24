@@ -171,6 +171,8 @@ class CoaRules
     when "exists" then value == "scope:actor" ? true : (value.to_s.start_with?("c:") ? @existing.include?(value.delete_prefix("c:")) : nil)
     when "scope:actor" then value.is_a?(Array) ? holds?(value, facts.dup.tap { |f| f.scope = nil }) : nil
     when "is_secessionist", "is_revolutionary", "is_revolutionary_or_secessionist", "has_variable" then value == "no"
+    when "game_date" then %w[< <=].include?(_op) ? true : nil # the start is before every date a rule waits for
+    when "country_is_taikunate" then value == "no" # needs a campaign variable
     when "is_subject_type" then @pacts.any? { |_, sub, t| sub == facts.tag && t == value.to_s.delete_prefix("subject_type_") }
     when "is_subject" then direct_overlord(facts.tag).nil? == (value == "no")
     when "is_subject_of", "is_direct_subject_of"
