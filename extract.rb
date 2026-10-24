@@ -116,10 +116,22 @@ class Vic3Extractor
     }
     @out.mkpath
     @out.join("data.json").write(JSON.generate(data))
+    write_links(data[:countries])
     economy = extract_economy(data[:countries].map { |c| c[:tag] }.to_set)
     @out.join("economy.json").write(JSON.generate(economy))
     puts "Wrote #{data[:techs].size} techs, #{units.size} units, #{ships.size} ships, #{mobilization.size} mobilization options, " \
          "#{laws.size} laws, #{data[:countries].size} countries, #{economy[:buildings].size} building types to #{@out}"
+  end
+
+  # Country name -> tag, for other pages that mention countries by name and want to link here
+  # (paradox-scores does this for achievement texts). Aliases cover how texts say a name.
+  LINK_ALIASES = { "USA" => "USA", "Ottoman Empire" => "TUR", "Great Qing" => "CHI", "British India Company" => "BIC" }.freeze
+
+  def write_links(countries)
+    tags = countries.map { |c| c[:tag] }.to_set
+    names = countries.to_h { |c| [c[:name], [c[:tag]]] }
+    LINK_ALIASES.each { |name, tag| names[name] = [tag] if tags.include?(tag) }
+    @out.join("links.json").write(JSON.generate(route: "#%s", names: names))
   end
 
   private

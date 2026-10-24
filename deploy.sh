@@ -53,8 +53,12 @@ if [ "${1:-}" = "--code-only" ]; then
     aws s3 cp "$f" "s3://${bucket}/${f}" --only-show-errors --cache-control "public, max-age=31536000"
   done
 else
-  aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" \
+  aws s3 sync vic3/ "s3://${bucket}/vic3/" --delete --exclude ".DS_Store" --exclude "*.v3" --exclude "links.json" \
     --cache-control "public, max-age=31536000"
+  # links.json (country name -> tag) is read by other apps that link here; at the root, not under the
+  # year-long-cached /vic3/, so a change shows up within the hour.
+  aws s3 cp vic3/links.json "s3://${bucket}/links.json" --only-show-errors \
+    --cache-control "public, max-age=3600" --content-type "application/json"
 fi
 aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
