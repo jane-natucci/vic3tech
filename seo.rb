@@ -92,6 +92,33 @@ links_to = lambda do |list|
   list.map { |c| %(<a href="/country/#{c["slug"]}">#{h(c["name"])}</a>) }.join(" · ")
 end
 
+# The script a generated page carries so that its address and its "About" text stay honest: while the app shows the
+# page's own item the address keeps the page's path; once the app moves on to another country (or culture, perk
+# tree ...) the address becomes the app's normal /#... one and the About text, which was about the first, goes.
+def entry_script(path:, key:, key_js:)
+  <<~JS
+    <script>
+      (() => {
+        const ENTRY = #{JSON.generate(key)}, PATH = #{JSON.generate(path)}, keyOf = #{key_js};
+        const settle = (url) => {
+          if (typeof url !== "string" || !url.includes("#")) return url;
+          const hash = url.slice(url.indexOf("#"));
+          if (hash.length < 2 || keyOf(hash) === ENTRY) return PATH + hash;
+          document.querySelector(".seo-about")?.remove();
+          return "/" + hash;
+        };
+        for (const m of ["replaceState", "pushState"]) {
+          const original = history[m].bind(history);
+          history[m] = (state, title, url) => original(state, title, settle(url));
+        }
+        const tidy = () => { if (location.hash.length > 1) history.replaceState(history.state, "", location.hash); };
+        document.addEventListener("DOMContentLoaded", tidy);
+        window.addEventListener("hashchange", tidy); // a link or an edited address, which don't go through the history calls above
+      })();
+    </script>
+  JS
+end
+
 # --- A page per country ----------------------------------------------------------------------------------------------
 FileUtils.mkdir_p(File.join(out, "country"))
 pages.each do |c|
@@ -108,7 +135,8 @@ pages.each do |c|
   url = "#{SITE}/country/#{c["slug"]}"
   html = retag(template, title: title, description: description(c), url: url)
   html = html.sub("<!--seo:about-->", block)
-  html = html.sub("<!--seo:head-->", %(<meta name="initial-tag" content="#{c["tag"]}">\n  ) + ld({
+  key_js = '(h) => decodeURIComponent(h.slice(1)).split("/")[0].toUpperCase()'
+  html = html.sub("<!--seo:head-->", %(<meta name="initial-tag" content="#{c["tag"]}">\n  ) + entry_script(path: "/country/#{c["slug"]}", key: c["tag"], key_js: key_js) + ld({
     "@context" => "https://schema.org", "@type" => "WebPage", "name" => title, "url" => url,
     "description" => description(c), "inLanguage" => "en",
     "isPartOf" => { "@type" => "WebSite", "name" => "#{SHORT} Tech", "url" => "#{SITE}/" },
