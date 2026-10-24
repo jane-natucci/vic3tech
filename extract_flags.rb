@@ -127,6 +127,7 @@ end
 
 # Plain arithmetic only: digits, + - * / and brackets.
 def sum(expr)
+  expr = expr.gsub(/[A-Za-z_][A-Za-z0-9_]*/) { VARS[$&] || $& } # `@[third*2]`: names inside the brackets are numbers too
   return "0" unless expr.match?(/\A[\d\s.+\-*\/()]+\z/)
 
   (eval(expr.gsub(/(?<![\d.])(\d+)(?![\d.])/, '\1.0')) || 0).round(6).to_s # rubocop:disable Security/Eval
@@ -320,8 +321,8 @@ tags.each do |tag|
   Dir.mktmpdir("flag") do |dir|
     recipe = recipe_for(tag)
     final = COA.key?(recipe) ? render(recipe, dir) : map_colour_tile(tag, dir)
-    run("magick", final, "-resize", "#{W}x#{H}", png(OUT.join("#{tag}.png")))
-    run("magick", final, "-filter", "Lanczos", "-resize", SMALL, png(OUT.join("s", "#{tag}.png")))
+    run("magick", final, "-resize", "#{W}x#{H}", "-strip", png(OUT.join("#{tag}.png")))
+    run("magick", final, "-filter", "Lanczos", "-resize", SMALL, "-strip", png(OUT.join("s", "#{tag}.png")))
     ok << tag
   rescue StandardError => e
     failed[tag] = e.message[0, 120]

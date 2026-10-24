@@ -648,7 +648,7 @@
         }
         document.body.classList.add("has-flag");
       };
-      img.src = asset(`flags/${c.tag}.png`);
+      img.src = flagUrl(`${c.tag}.png`);
     }
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
     // Split so deploy.sh's substitution can't rewrite this check too.
@@ -660,9 +660,12 @@
     const DATA_VERSION = "__DATA_VERSION__";
     const assetVersion = DATA_VERSION.startsWith("__") ? String(Date.now()) : DATA_VERSION;
     const asset = path => `/vic3/${path}?v=${assetVersion}`;
+    // Flags are versioned by themselves (deploy.sh writes a digest of the pictures), so a redrawn flag shows up at once.
+    const FLAGS_VERSION = "__FLAGS_VERSION__";
+    const flagUrl = path => `/vic3/flags/${path}?v=${FLAGS_VERSION.startsWith("__") ? assetVersion : FLAGS_VERSION}`;
     // The country's own 1836 flag, drawn from the game's coat-of-arms recipes (extract_flags.rb). A tag with no
     // picture (a country formed later, seen in a loaded save) shows its letters instead.
-    const flagHtml = (c, cls = "flag") => `<span class="${cls}" title="${esc(c.name)}"><img class="fimg" src="${asset(`flags/s/${c.tag}.png`)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('none');this.replaceWith('${c.tag}')"></span>`;
+    const flagHtml = (c, cls = "flag") => `<span class="${cls}" title="${esc(c.name)}"><img class="fimg" src="${flagUrl(`s/${c.tag}.png`)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('none');this.replaceWith('${c.tag}')"></span>`;
     const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
     const ERA_NAMES = { era_1: "Era I · before 1836", era_2: "Era II · 1836–1861", era_3: "Era III · 1862–1886", era_4: "Era IV · 1887–1911", era_5: "Era V · 1911–1936" };
