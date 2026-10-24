@@ -217,6 +217,7 @@ def place(canvas, layer_file, instance)
   sx, sy = scale.map { |_, v| v.to_f }
   sy ||= sx # one number scales both ways
   rotation = Script.get(instance, "rotation").to_f
+  WARNINGS[$current_recipe] << "emblem scaled to nothing" if sx.abs < 0.005 || sy.abs < 0.005
   w = [ (sx.abs * W).round, 1 ].max
   h = [ (sy.abs * H).round, 1 ].max
   flip = []
@@ -229,7 +230,12 @@ def place(canvas, layer_file, instance)
 end
 
 # Draws a recipe onto a W x H file and returns it.
+WARNINGS = Hash.new { |h, k| h[k] = [] }
+KNOWN = %w[pattern color1 color2 color3 color4 color5 colored_emblem textured_emblem sub].freeze
+ORDER = { "colored_emblem" => 0, "textured_emblem" => 1, "sub" => 2 }.freeze
+
 def render(name, dir, depth = 0)
+  $current_recipe = name
   recipe = COA[name] or raise "no coat of arms #{name}"
   raise "recipe loop at #{name}" if depth > 6
 
@@ -243,27 +249,39 @@ def render(name, dir, depth = 0)
     run("magick", "-size", "#{W}x#{H}", "xc:none", png(canvas)) # no pattern: a see-through layer (the arms inside a flag)
   end
 
-  recipe.each do |k, v|
+  # The game draws every coloured emblem, then every textured emblem, then the sub-flags -- whatever order the
+  # file lists them in (Hungary's arms come first in its file and would otherwise sit under the tricolour).
+  recipe.each { |k, _| WARNINGS[name] << "unused key #{k}" if k && !KNOWN.include?(k) }
+  listed = recipe.select { |k, _| ORDER.key?(k) }
+  WARNINGS[name] << "layers listed out of draw order" if listed.map { |k, _| ORDER[k] } != listed.map { |k, _| ORDER[k] }.sort
+  layers = listed.sort_by.with_index { |(k, _), i| [ ORDER[k], i ] }
+
+  layers.each do |k, v|
     case k
     when "colored_emblem"
       file = texture("colored", Script.get(v, "texture").to_s)
-      next unless file.exist?
+      (WARNINGS[name] << "missing texture #{Script.get(v, 'texture')}") && next unless file.exist?
 
       local = palette.dup
-      %w[color1 color2 color3].each { |c| (col = resolve(Script.get(v, c), palette)) && local[c] = col }
+      %w[color1 color2 color3].each do |c|
+        raw = Script.get(v, c)
+        col = resolve(raw, palette)
+        raw && !col && WARNINGS[name] << "unknown colour #{raw}"
+        col && local[c] = col
+      end
       layer = File.join(dir, "ce-#{rand(1_000_000)}.png")
       paint_colored_emblem(file, [ local["color1"] || "#000000", local["color2"] || local["color1"] || "#000000", local["color3"] || local["color1"] || "#000000" ], layer)
       instances(v).each { |inst| place(canvas, layer, inst) }
     when "textured_emblem"
       file = texture("textured", Script.get(v, "texture").to_s)
-      next unless file.exist?
+      (WARNINGS[name] << "missing texture #{Script.get(v, 'texture')}") && next unless file.exist?
 
       layer = File.join(dir, "te-#{rand(1_000_000)}.png")
       run("magick", file.to_s, png(layer))
       instances(v).each { |inst| place(canvas, layer, inst) }
     when "sub"
       parent = Script.get(v, "parent")
-      next unless parent && COA[parent]
+      (WARNINGS[name] << "missing sub-flag #{parent}") && next unless parent && COA[parent]
 
       sub_file = render(parent, dir, depth + 1)
       instances(v).each do |inst|
@@ -329,4 +347,7 @@ tags.each do |tag|
   end
 end
 puts "Flags: #{ok.size} drawn into #{OUT}, #{failed.size} failed"
+shown = WARNINGS.select { |recipe, w| ok.any? { |t| recipe_for(t) == recipe } || true }
+puts "Recipes with something we skipped or may have got wrong (#{shown.size}):"
+shown.sort.each { |recipe, w| puts "  #{recipe}: #{w.uniq.join('; ')}" }
 failed.first(10).each { |t, m| puts "  #{t}: #{m}" }
