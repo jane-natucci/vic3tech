@@ -57,6 +57,9 @@ label="${sha:0:7}"
 sed -e "s/__DATA_VERSION__/${version}/g" -e "s/__FLAGS_VERSION__/${flags_version}/g" -e "s/__BUILD_SHA__/${sha}/g" -e "s/__BUILD_LABEL__/${label}/g" \
   index.html > "$tmp/index.html"
 
+# The crawlable side: a page per country, the sitemap and the front page (seo.rb).
+ruby seo.rb "$data" "$tmp/index.html" "$tmp/seo"
+
 # Assets first, page last, so a new page never points at files not yet there.
 if [ "${1:-}" = "--code-only" ]; then
   for f in $tracked; do
@@ -70,7 +73,15 @@ else
   aws s3 cp vic3/links.json "s3://${bucket}/links.json" --only-show-errors \
     --cache-control "public, max-age=3600" --content-type "application/json"
 fi
-aws s3 cp "$tmp/index.html" "s3://${bucket}/index.html" --only-show-errors \
+# The country pages have no file extension, so they say they are HTML themselves. (A plain copy, not a sync: the CI
+# role may write to the bucket but not list it.)
+aws s3 cp "$tmp/seo/country" "s3://${bucket}/country" --recursive --only-show-errors \
+  --content-type "text/html; charset=utf-8" --cache-control "public, max-age=3600"
+aws s3 cp "$tmp/seo/sitemap.xml" "s3://${bucket}/sitemap.xml" --only-show-errors \
+  --cache-control "public, max-age=3600" --content-type "application/xml"
+aws s3 cp robots.txt "s3://${bucket}/robots.txt" --only-show-errors \
+  --cache-control "public, max-age=3600" --content-type "text/plain; charset=utf-8"
+aws s3 cp "$tmp/seo/index.html" "s3://${bucket}/index.html" --only-show-errors \
   --cache-control "no-cache" --content-type "text/html; charset=utf-8"
 
 # The "share this save" Lambda (lambda/share.mjs). Terraform creates the

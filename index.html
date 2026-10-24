@@ -22,6 +22,23 @@
   <meta name="twitter:title" content="Victoria 3 – 1836 Tech Tree, Army &amp; Economy Comparison">
   <meta name="twitter:description" content="Which countries start ahead in Victoria 3? Tech tree, armies, units, buildings and resources for every nation in 1836.">
   <meta name="twitter:image" content="https://vic3tech.jane.berlin/vic3/og-image.jpg">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Vic3 Tech Tree",
+      "url": "https://vic3tech.jane.berlin/",
+      "description": "Every Victoria 3 country at the 1836 start: which technologies it starts with, its laws, armies and navies, every unit, ship and mobilization option by era, and its buildings and resources, read from the game files.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any",
+      "inLanguage": "en",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "about": { "@type": "VideoGame", "name": "Victoria 3" },
+      "author": { "@type": "Person", "name": "Jane Natucci", "url": "https://jane.berlin/" }
+    }
+  </script>
+  <!--seo:head-->
   <link rel="icon" type="image/svg+xml" href="/vic3/favicon.svg?v=__DATA_VERSION__">
   <script>
     // Runs before the page draws, so neither of these flashes.
@@ -163,6 +180,11 @@
     /* A flag is a picture, sized from the text around it. */
     .fimg { height: 1em; width: 1.5em; object-fit: cover; border-radius: 2px; vertical-align: -0.15em; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); }
     .flag.none .fimg { display: none; }
+    /* The plain-text summary of the open country, for people and search engines that read the page's own text. */
+    .seo-about { padding: 14px 20px 6px; font-size: 0.82em; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--line); }
+    .seo-about summary { cursor: pointer; color: var(--ink); margin-bottom: 6px; }
+    .seo-about p { margin: 0 0 6px; max-width: 110ch; }
+    .seo-about a { color: var(--accent); }
     /* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
     .brand { display: flex; align-items: center; gap: 12px; }
     .corner-flag { display: none; height: 44px; width: 60px; margin: -3px 0; flex: none; /* the flag may overhang the row a little, so the bar keeps the height it had */ filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
@@ -611,6 +633,7 @@
       <div id="lawBody"></div>
     </section>
 
+    <!--seo:about-->
     <footer>
       <div>
         Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>;
@@ -704,7 +727,7 @@
                         lawView: k => k === "country" || k === "compare" };
     function parseHash() {
       const [tagPart, part2, part3] = location.hash.slice(1).split("/");
-      const tag = tagPart ? tagPart.toUpperCase() : null;
+      const tag = tagPart ? tagPart.toUpperCase() : document.querySelector('meta[name="initial-tag"]')?.content || null;
       if (part2 && HASH_VIEW[part2]) {
         const view = HASH_VIEW[part2];
         const sub = part3 && SUB_VALID[view]?.(part3) ? part3 : null;
