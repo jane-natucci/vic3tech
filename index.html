@@ -462,6 +462,9 @@
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
     footer .more { margin-top: 3px; }
+    /* The Twemoji credit (CC BY 4.0) is for the flag art, so it shows only where that art is in use: on devices without flag emoji. */
+    footer .flag-credit { display: none; }
+    html.twemoji-flags footer .flag-credit { display: inline; }
 
     /* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
        mobilization" -> "Units", so the header stays one row. */
@@ -629,13 +632,13 @@
     <footer>
       <div>
         Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>;
-        Victoria 3 is © Paradox Interactive. Flags are Twemoji
-        (<a href="https://github.com/twitter/twemoji">CC BY 4.0</a>) on devices without flag emoji.
+        Victoria 3 is © Paradox Interactive.<span class="flag-credit"> Flags are Twemoji (<a href="https://github.com/twitter/twemoji">CC BY 4.0</a>).</span>
       </div>
       <div class="more">
-        More from the same maker: <a href="https://eu5tech.jane.berlin/">EU5 Tech Tree</a> ·
-        <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> ·
-        <a href="https://achievements.jane.berlin">Achievement chains</a>
+        See also: <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> ·
+        <a href="https://eu5tech.jane.berlin/">EU5 Tech Tree</a> ·
+        <a href="https://eu4tech.jane.berlin/">EU4 Tech Tree</a> ·
+        <a href="https://ck3tech.jane.berlin/">CK3 Tech Tree</a>
       </div>
     </footer>
   </main>
