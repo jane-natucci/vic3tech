@@ -165,7 +165,7 @@
     .flag.none .fimg { display: none; }
     /* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
     .brand { display: flex; align-items: center; gap: 12px; }
-    .corner-flag { display: none; height: 44px; width: 60px; flex: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
+    .corner-flag { display: none; height: 44px; width: 60px; margin: -3px 0; flex: none; /* the flag may overhang the row a little, so the bar keeps the height it had */ filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
     @media (min-width: 761px) {
       body.has-flag .corner-flag { display: block; }
       body.has-flag .brand .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* still the page's heading, just not drawn */
