@@ -165,7 +165,7 @@
     .flag.none .fimg { display: none; }
     /* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
     .brand { display: flex; align-items: center; gap: 12px; }
-    .corner-flag { display: none; height: 44px; width: 60px; flex: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
+    .corner-flag { display: none; height: 56px; width: 78px; flex: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
     @media (min-width: 761px) {
       body.has-flag .corner-flag { display: block; }
       body.has-flag .brand .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* still the page's heading, just not drawn */
@@ -519,7 +519,7 @@
 <body>
   <header>
     <div class="brand">
-      <canvas class="corner-flag" id="cornerFlag" width="60" height="44" role="img" aria-label=""></canvas>
+      <canvas class="corner-flag" id="cornerFlag" width="78" height="56" role="img" aria-label=""></canvas>
       <h1><span class="title">Victoria 3</span> <button type="button" class="era" id="eraBtn" aria-haspopup="true" aria-expanded="false" title="Recent saves"><small id="eraLabel">1836 start</small><small class="caret">▾</small></button></h1>
       <div class="recent" id="recentMenu" hidden></div>
     </div>
@@ -635,7 +635,7 @@
       img.onerror = () => document.body.classList.remove("has-flag");
       img.onload = () => {
         if (current()?.tag !== c.tag) return; // the pointer has moved on to another country
-        const W = Math.round(60 * ratio), H = Math.round(44 * ratio), amp = 3.4 * ratio, phase0 = 330 * Math.PI / 180, waves = 1.5, shade = 0.3;
+        const W = Math.round(78 * ratio), H = Math.round(56 * ratio), amp = 4.4 * ratio, phase0 = 330 * Math.PI / 180, waves = 1.5, shade = 0.3;
         cv.width = W; cv.height = H;
         const ctx = cv.getContext("2d"), inner = H - 2 * amp - 2 * ratio;
         for (let x = 0; x < W; x++) {
