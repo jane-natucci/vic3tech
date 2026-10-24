@@ -17,54 +17,8 @@ require "time"
 # Game files are UTF-8 (names like "Württemberg"); don't depend on the shell's locale.
 Encoding.default_external = Encoding::UTF_8
 
-# Just enough of a parser for Paradox's Jomini script format: `key = value`,
-# `key ?= { ... }`, comparisons, bare list items and # comments. A block is
-# an array of [key, op, value] entries; bare list items have a nil key.
-module Vic3Script
-  TOKEN = /\s+|#[^\n]*|"(?:[^"\\]|\\.)*"|[?!<>=]=|[={}<>]|[^\s={}<>#"]+/
-
-  def self.parse(text)
-    tokens = text.delete_prefix("﻿").scan(TOKEN).reject { |t| t.match?(/\A\s/) || t.start_with?("#") }
-    block, = parse_block(tokens, 0)
-    block
-  end
-
-  def self.parse_block(tokens, i)
-    entries = []
-    while i < tokens.size && tokens[i] != "}"
-      first = tokens[i]
-      if tokens[i + 1]&.match?(/\A(?:[?!<>=]=|[=<>])\z/)
-        op = tokens[i + 1]
-        value, i = parse_value(tokens, i + 2)
-        entries << [unquote(first), op, value]
-      else
-        value, i = parse_value(tokens, i)
-        entries << [nil, nil, value]
-      end
-    end
-    [entries, i + 1]
-  end
-
-  def self.parse_value(tokens, i)
-    return parse_block(tokens, i + 1) if tokens[i] == "{"
-    [unquote(tokens[i]), i + 1]
-  end
-
-  def self.unquote(token) = token.delete_prefix('"').delete_suffix('"')
-
-  def self.values(block, key) = block.select { |k, _, _| k == key }.map(&:last)
-  def self.value(block, key) = values(block, key).first
-  def self.list(block) = block.is_a?(Array) ? block.map(&:last).select { |v| v.is_a?(String) } : []
-
-  # Every [key, value] at any depth -- starting techs sometimes sit inside
-  # `if = { limit = { has_dlc_feature = ... } }` blocks.
-  def self.walk(block, &visit)
-    block.each do |k, _, v|
-      visit.call(k, v)
-      walk(v, &visit) if v.is_a?(Array)
-    end
-  end
-end
+require_relative "vic3_script"
+require_relative "coa_rules"
 
 class Vic3Extractor
   CATEGORIES = %w[production military society].freeze
@@ -90,6 +44,7 @@ class Vic3Extractor
     icons = write_icons(techs)
     units, ships, mobilization = extract_units, extract_ships, extract_mobilization
     law_groups, laws = extract_laws(countries)
+    use_dynamic_names(countries)
 
     data = {
       generated_at: Time.now.utc.iso8601,
@@ -362,6 +317,25 @@ class Vic3Extractor
       years: Vic3Script.value(Vic3Script.value(body, "binding_period").to_a, "years")&.to_i,
       articles: articles
     }
+  end
+
+  # The game names a country by what it is at the start: TUR is "Turkey" in the files, but a monarchy of that
+  # tag is the Ottoman Empire, CHI under a Manchu monarchy the Great Qing, KOR the Joseon. (common/dynamic_country_names)
+  def use_dynamic_names(countries)
+    rules = CoaRules.new(@game, countries.keys.to_set)
+    changed = []
+    countries.each_value do |c|
+      next unless c[:exists]
+
+      cultures = Vic3Script.list(Vic3Script.value(country_definitions[c[:tag]] || [], "cultures"))
+      name_key, = rules.dynamic_name(CoaRules::Facts.new(tag: c[:tag], laws: c[:laws].to_set, cultures: cultures.to_set))
+      name = name_key && text(name_key)
+      next unless name && name != c[:name]
+
+      changed << "#{c[:name]} -> #{name}"
+      c[:name] = name
+    end
+    puts "Dynamic names used for #{changed.size} countries (#{changed.first(8).join(', ')}...)"
   end
 
   def country_definitions

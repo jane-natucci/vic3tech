@@ -1,6 +1,8 @@
 # Draws Victoria 3's flags from the game's own coat-of-arms recipes (the game has no flag images:
 # it paints each flag from a background pattern, colour-mask emblems and full-colour emblems).
-# Writes vic3/flags/<TAG>.png for every country in vic3/data.json (run extract.rb first).
+# Writes vic3/flags/<TAG>.png (288x192) and vic3/flags/s/<TAG>.png (72x48, for lists) for every country in vic3/data.json
+# (run extract.rb first). Each country gets the flag it has at the 1836 start: the game chooses by government,
+# culture and so on (common/flag_definitions), which coa_rules.rb works out.
 #
 #   ruby extract_flags.rb                  # every country
 #   ruby extract_flags.rb FRA PRU GBR      # just these tags (to look at them)
@@ -212,6 +214,7 @@ def place(canvas, layer_file, instance)
   scale = Script.get(instance, "scale") || [ [ nil, "1" ], [ nil, "1" ] ]
   px, py = pos.map { |_, v| v.to_f }
   sx, sy = scale.map { |_, v| v.to_f }
+  sy ||= sx # one number scales both ways
   rotation = Script.get(instance, "rotation").to_f
   w = [ (sx.abs * W).round, 1 ].max
   h = [ (sy.abs * H).round, 1 ].max
@@ -267,6 +270,7 @@ def render(name, dir, depth = 0)
         scale = Script.get(inst, "scale") || [ [ nil, "1" ], [ nil, "1" ] ]
         ox, oy = off.map { |_, x| x.to_f }
         sx, sy = scale.map { |_, x| x.to_f }
+        sy ||= sx
         w = [ (sx * W).round, 1 ].max
         h = [ (sy * H).round, 1 ].max
         run("magick", canvas, "(", sub_file, "-resize", "#{w}x#{h}!", ")", "-gravity", "NorthWest", "-geometry", format("%+d%+d", (ox * W).round, (oy * H).round),
@@ -277,15 +281,47 @@ def render(name, dir, depth = 0)
   canvas
 end
 
+# --- Which recipe each country flies at the start (flag_definitions: by government, culture ...) ---------------------
+require_relative "vic3_script"
+require_relative "coa_rules"
+require "set"
+
+DATA = JSON.parse(File.read(File.join(__dir__, "vic3/data.json")))
+COUNTRIES = DATA["countries"].to_h { |c| [ c["tag"], c ] }
+DEFINITIONS = Dir[GAME.join("common/country_definitions/*.txt").to_s].sort.flat_map { |f| Vic3Script.parse(File.read(f)) }
+                    .select { |k, _, v| k && v.is_a?(Array) }.to_h { |k, _, v| [ k, v ] }
+RULES = CoaRules.new(GAME, COUNTRIES.keys.to_set)
+
+def recipe_for(tag)
+  c = COUNTRIES[tag] or return tag
+  cultures = Vic3Script.list(Vic3Script.value(DEFINITIONS[tag] || [], "cultures"))
+  RULES.flag_coa(CoaRules::Facts.new(tag: tag, laws: c["laws"].to_set, cultures: cultures.to_set), COA.keys.to_set)
+end
+
+SMALL = "72x48" # the list on the left of a page: about 36 px wide, drawn at twice that for sharp screens
+
+# Countries with no recipe (the many small ones the game gives a *random* flag, made on the spot and different
+# every campaign) get a plain tile in the colour they have on the game's map: honest, and it can't be wrong.
+def map_colour_tile(tag, dir)
+  nums = Vic3Script.list(Vic3Script.value(DEFINITIONS[tag] || [], "color")).map(&:to_f)
+  nums = nums.map { |n| nums.max > 1 ? n / 255.0 : n } if nums.size == 3
+  rgb = nums.size == 3 ? to_hex(nums) : "#555555"
+  file = File.join(dir, "tile.png")
+  run("magick", "-size", "#{W}x#{H}", "xc:#{rgb}", png(file))
+  file
+end
+
 # --- Go ------------------------------------------------------------------------------------------------------------------------
 tags = ARGV.empty? ? JSON.parse(File.read(File.join(__dir__, "vic3/data.json")))["countries"].map { |c| c["tag"] } : ARGV
-FileUtils.mkdir_p(OUT)
+FileUtils.mkdir_p(OUT.join("s"))
 ok = []
 failed = {}
 tags.each do |tag|
   Dir.mktmpdir("flag") do |dir|
-    final = render(tag, dir)
+    recipe = recipe_for(tag)
+    final = COA.key?(recipe) ? render(recipe, dir) : map_colour_tile(tag, dir)
     run("magick", final, "-resize", "#{W}x#{H}", png(OUT.join("#{tag}.png")))
+    run("magick", final, "-filter", "Lanczos", "-resize", SMALL, png(OUT.join("s", "#{tag}.png")))
     ok << tag
   rescue StandardError => e
     failed[tag] = e.message[0, 120]
