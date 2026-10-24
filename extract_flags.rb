@@ -151,12 +151,17 @@ def run(*cmd)
   raise "#{cmd.first(4).join(' ')}: #{err.strip[0, 200]}" unless status.success?
 end
 
+# Colours a recipe names that the game never defines (they would draw nothing): Grão-Pará's star asks for
+# `light_blue`, which no file defines, so it gets silver.
+COLOUR_FIXES = { "PRA" => { "light_blue" => "silver" } }.freeze
+NAMED["silver"] ||= "#c0c0c0"
+
 # A colour value inside a recipe: a name, an inline colour, or another colour of the same recipe (color1 = color2).
 def resolve(value, palette)
   return parse_color(value) if value.is_a?(Hash)
   return palette[value] if value.is_a?(String) && palette.key?(value)
 
-  NAMED[value]
+  NAMED[COLOUR_FIXES.dig($current_recipe, value) || value]
 end
 
 # The pattern with its three masks filled with the recipe's colours.

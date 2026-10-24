@@ -323,7 +323,7 @@ class Vic3Extractor
   # tag is the Ottoman Empire, CHI under a Manchu monarchy the Great Qing, KOR the Joseon. (common/dynamic_country_names)
   # The names we keep as the game's plain ones: the Hudson's Bay Company is called that in the game's list, not
   # Rupert's Land, and the Lakota stay the Lakota. The USA is shortened so it fits a list row.
-  KEEP_PLAIN_NAME = %w[HBC LKT].freeze
+  KEEP_PLAIN_NAME = %w[HBC LKT PNI].freeze
   NAME_OVERRIDES = { "USA" => "USA" }.freeze
 
   def use_dynamic_names(countries)

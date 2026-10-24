@@ -48,7 +48,7 @@ Local deploys use the `personal` AWS profile by default (`AWS_PROFILE` overrides
 
 - States split between countries: arable land and resource caps are divided by each owner's share of the state's provinces. The game uses a slightly different internal rule, so these can be off by a few percent (whole states match exactly).
 - Starting barracks aren't in the game's building history (they come from the army setup), so military buildings are left out of the economy view.
-- Flags are modern emoji, only there to tell countries apart.
+- Flags are the ones countries fly at the 1836 start, worked out from the game's coat-of-arms recipes and the triggers that choose between them. A few recipes use effects this doesn't reproduce, so a handful of flags may differ in small details. Countries the game gives a random flag at campaign start (about a third) show a tile in their map colour instead.
 
 ## Credits
 

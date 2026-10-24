@@ -922,7 +922,8 @@
     function renderSidebar() {
       const q = document.getElementById("search").value.trim().toLowerCase();
       const m = sidebarMetric();
-      const match = c => !q || c.name.toLowerCase().includes(q) || c.tag.toLowerCase() === q;
+      const plain = x => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const match = c => !q || plain(c.name).includes(plain(q)) || c.tag.toLowerCase() === q;
       // A search always looks through every country, whatever the scope.
       const inScope = c => q || state.scope === "all" || isEurope(c);
       const list = state.data.countries.filter(c => inScope(c) && match(c))
