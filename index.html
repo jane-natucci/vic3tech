@@ -165,7 +165,7 @@
     .flag.none .fimg { display: none; }
     /* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
     .brand { display: flex; align-items: center; gap: 12px; }
-    .corner-flag { display: none; height: 38px; width: 57px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.25); flex: none; }
+    .corner-flag { display: none; height: 44px; width: 60px; flex: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
     @media (min-width: 761px) {
       body.has-flag .corner-flag { display: block; }
       body.has-flag .brand .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* still the page's heading, just not drawn */
@@ -519,7 +519,7 @@
 <body>
   <header>
     <div class="brand">
-      <img class="corner-flag" id="cornerFlag" alt="">
+      <canvas class="corner-flag" id="cornerFlag" width="60" height="44" role="img" aria-label=""></canvas>
       <h1><span class="title">Victoria 3</span> <button type="button" class="era" id="eraBtn" aria-haspopup="true" aria-expanded="false" title="Recent saves"><small id="eraLabel">1836 start</small><small class="caret">▾</small></button></h1>
       <div class="recent" id="recentMenu" hidden></div>
     </div>
@@ -626,6 +626,30 @@
   </main>
 
   <script>
+    // The current country's flag in the corner, hung like cloth in a still wave (the game's flags wave; this keeps
+    // the folds and their light and shadow but doesn't move). Drawn from the flag picture: every pixel column is
+    // lifted or dropped along one wave that grows away from the pole, with a light or dark band where the cloth folds.
+    function drawCornerFlag(c) {
+      const cv = document.getElementById("cornerFlag"), img = new Image(), ratio = window.devicePixelRatio || 1;
+      cv.setAttribute("aria-label", c.name); cv.title = c.name;
+      img.onerror = () => document.body.classList.remove("has-flag");
+      img.onload = () => {
+        if (current()?.tag !== c.tag) return; // the pointer has moved on to another country
+        const W = Math.round(60 * ratio), H = Math.round(44 * ratio), amp = 3.4 * ratio, phase0 = 3 * Math.PI / 2, waves = 1.5, shade = 0.3;
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext("2d"), inner = H - 2 * amp - 2 * ratio;
+        for (let x = 0; x < W; x++) {
+          const u = x / W, grow = 0.2 + 0.8 * u, phase = u * waves * Math.PI * 2 - phase0;
+          const y = amp + ratio + Math.sin(phase) * amp * grow;
+          ctx.drawImage(img, Math.floor(u * img.naturalWidth), 0, 2, img.naturalHeight, x, y, 1, inner);
+          const s = Math.cos(phase) * shade * grow;
+          ctx.fillStyle = s > 0 ? `rgba(255,255,255,${s * 0.55})` : `rgba(0,0,0,${-s})`;
+          ctx.fillRect(x, y, 1, inner);
+        }
+        document.body.classList.add("has-flag");
+      };
+      img.src = asset(`flags/${c.tag}.png`);
+    }
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
     // Split so deploy.sh's substitution can't rewrite this check too.
     if (document.getElementById("buildLink").href.includes("__BUILD" + "_SHA__")) document.getElementById("buildLink").remove();
@@ -924,11 +948,7 @@
         <div class="cstats" title="${esc(full)} (tech: production / military / society)">${esc(short)}</div></div>
         ${c.tier ? `<span class="pill" title="Which starting-tech package the game gives this country">Tech tier ${c.tier}</span>` : ""}
         ${state.preview && state.preview !== state.pinned ? `<span class="pill">preview</span>` : ""}`;
-      const corner = document.getElementById("cornerFlag");
-      corner.alt = corner.title = c.name;
-      corner.onload = () => document.body.classList.add("has-flag");
-      corner.onerror = () => document.body.classList.remove("has-flag");
-      corner.src = asset(`flags/${c.tag}.png`);
+      drawCornerFlag(c);
     }
 
     function renderSubtabs() {
