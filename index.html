@@ -635,7 +635,7 @@
       img.onerror = () => document.body.classList.remove("has-flag");
       img.onload = () => {
         if (current()?.tag !== c.tag) return; // the pointer has moved on to another country
-        const W = Math.round(60 * ratio), H = Math.round(44 * ratio), amp = 3.4 * ratio, phase0 = 3 * Math.PI / 2, waves = 1.5, shade = 0.3;
+        const W = Math.round(60 * ratio), H = Math.round(44 * ratio), amp = 3.4 * ratio, phase0 = 330 * Math.PI / 180, waves = 1.5, shade = 0.3;
         cv.width = W; cv.height = H;
         const ctx = cv.getContext("2d"), inner = H - 2 * amp - 2 * ratio;
         for (let x = 0; x < W; x++) {
