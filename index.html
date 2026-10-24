@@ -30,32 +30,6 @@
       const t = localStorage.getItem("vic3-theme");
       if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
     } catch {}
-    // 2. Flags: Windows has no flag emoji (🇫🇷 shows as the letters "FR"). If
-    // the device can draw colour emoji but not flags -- or ?flags=twemoji asks
-    // for it, for testing -- use the Twemoji flag font for flag characters
-    // only. Detection after country-flag-emoji-polyfill (MIT, TalkJS): a
-    // colour glyph ignores fillStyle, so drawing it in white and in black
-    // gives the same, non-black pixel.
-    (() => {
-      const colourGlyph = text => {
-        const c = document.createElement("canvas"); c.width = c.height = 1;
-        const x = c.getContext("2d", { willReadFrequently: true });
-        x.textBaseline = "top"; x.font = '100px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.scale(0.01, 0.01);
-        const draw = colour => { x.clearRect(0, 0, 100, 100); x.fillStyle = colour; x.fillText(text, 0, 0); return x.getImageData(0, 0, 1, 1).data.join(","); };
-        const white = draw("#fff"), black = draw("#000");
-        return white === black && !black.startsWith("0,0,0,");
-      };
-      let force = false;
-      try { force = new URLSearchParams(location.search).get("flags") === "twemoji"; } catch {}
-      if (force || (colourGlyph("\u{1F60A}") && !colourGlyph("\u{1F1E8}\u{1F1ED}"))) {
-        document.documentElement.classList.add("twemoji-flags");
-        const style = document.createElement("style");
-        style.textContent = `@font-face { font-family: "Twemoji Country Flags"; font-display: swap;
-          unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
-          src: url("/vic3/fonts/TwemojiCountryFlags.woff2") format("woff2"); }`;
-        document.head.appendChild(style);
-      }
-    })();
   </script>
   <style>
     :root {
@@ -124,7 +98,6 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html.twemoji-flags body { font-family: "Twemoji Country Flags", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
     .theme-toggle { flex: none; font: inherit; font-size: 1em; line-height: 1; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: transparent; cursor: pointer; }
     .theme-toggle:hover { border-color: var(--accent); }
     html, body { height: 100%; }
@@ -187,6 +160,17 @@
     .current .cname, .current .cstats { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .current .cstats { font-size: 0.8em; color: var(--muted); }
     .current .flag { font-size: 1.6em; }
+    /* A flag is a picture, sized from the text around it. */
+    .fimg { height: 1em; width: 1.5em; object-fit: cover; border-radius: 2px; vertical-align: -0.15em; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); }
+    .flag.none .fimg { display: none; }
+    /* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .corner-flag { display: none; height: 38px; width: 57px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.25); flex: none; }
+    @media (min-width: 761px) {
+      body.has-flag .corner-flag { display: block; }
+      body.has-flag .brand .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* still the page's heading, just not drawn */
+      .current .flag { display: none; }
+    }
     .current b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
     .pill { font-size: 0.72em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
 
@@ -462,9 +446,6 @@
     footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
     footer a { color: inherit; }
     footer .more { margin-top: 3px; }
-    /* The Twemoji credit (CC BY 4.0) is for the flag art, so it shows only where that art is in use: on devices without flag emoji. */
-    footer .flag-credit { display: none; }
-    html.twemoji-flags footer .flag-credit { display: inline; }
 
     /* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
        mobilization" -> "Units", so the header stays one row. */
@@ -538,7 +519,8 @@
 <body>
   <header>
     <div class="brand">
-      <h1>Victoria 3 <button type="button" class="era" id="eraBtn" aria-haspopup="true" aria-expanded="false" title="Recent saves"><small id="eraLabel">1836 start</small><small class="caret">▾</small></button></h1>
+      <img class="corner-flag" id="cornerFlag" alt="">
+      <h1><span class="title">Victoria 3</span> <button type="button" class="era" id="eraBtn" aria-haspopup="true" aria-expanded="false" title="Recent saves"><small id="eraLabel">1836 start</small><small class="caret">▾</small></button></h1>
       <div class="recent" id="recentMenu" hidden></div>
     </div>
     <!-- deploy.sh fills in the commit; a local preview has no build to show. -->
@@ -632,7 +614,7 @@
     <footer>
       <div>
         Unofficial fan page. Data and icons come from the Victoria 3 game files<span id="gameVersion"></span>;
-        Victoria 3 is © Paradox Interactive.<span class="flag-credit"> Flags are Twemoji (<a href="https://github.com/twitter/twemoji">CC BY 4.0</a>).</span>
+        Victoria 3 is © Paradox Interactive.
       </div>
       <div class="more">
         See also: <a href="https://vic3.jane.berlin">Vic3 Strength Score</a> ·
@@ -644,26 +626,6 @@
   </main>
 
   <script>
-    // Flag emoji for a tag, via its closest modern country. Deliberately
-    // loose (every German state gets 🇩🇪) -- it's only there to scan the list.
-    const ISO = {
-      GBR: "GB", FRA: "FR", RUS: "RU", AUS: "AT", PRU: "DE", TUR: "TR", SPA: "ES", SPC: "ES", POR: "PT",
-      NET: "NL", BEL: "BE", LUX: "LU", SWE: "SE", NOR: "NO", DEN: "DK", FIN: "FI", SWI: "CH", GRE: "GR",
-      SAR: "IT", SIC: "IT", TUS: "IT", LUC: "IT", MOD: "IT", PAR: "IT", PAP: "VA", HUN: "HU", CRO: "HR",
-      SER: "RS", MON: "ME", MOL: "RO", WAL: "RO", TRS: "RO", UBD: "EE", KRA: "PL",
-      BAD: "DE", BAV: "DE", BRE: "DE", FRM: "DE", HAM: "DE", HAN: "DE", HEK: "DE", HES: "DE", HOL: "DE",
-      LUB: "DE", MEC: "DE", NAS: "DE", OLD: "DE", SAX: "DE", SCH: "DE", WLD: "DE", WUR: "DE",
-      USA: "US", MEX: "MX", TEX: "US", BRZ: "BR", ARG: "AR", CHL: "CL", BOL: "BO", CLM: "CO", VNZ: "VE",
-      NPU: "PE", SPU: "PE", HAI: "HT", HAW: "US", CHI: "CN", JAP: "JP", KOR: "KR", SIA: "TH", BUR: "MM",
-      PER: "IR", EGY: "EG", MOR: "MA", PAN: "IN",
-      // Formed or released mid-game -- only show up in a loaded save.
-      GER: "DE", ITA: "IT", POL: "PL", BUL: "BG", ROM: "RO", IRE: "IE", CZH: "CZ", BOH: "CZ", UKR: "UA",
-      LIT: "LT", LAT: "LV", EST: "EE", ALB: "AL", ICL: "IS", YUG: "RS", SLV: "SK", SLO: "SI", BYE: "BY",
-      GEO: "GE", ARM: "AM", AZB: "AZ", CAN: "CA", AST: "AU", NZL: "NZ", SAF: "ZA", IDN: "ID", PHI: "PH",
-      ISR: "IL", IRQ: "IQ", SYR: "SY", LEB: "LB", ARA: "SA", AFG: "AF", PAK: "PK", MGL: "MN", CUB: "CU",
-      PNM: "PA", ECU: "EC", URU: "UY", PRG: "PY", PEU: "PE", ETH: "ET", LBY: "LY", ALD: "DZ", LIB: "LR",
-      MAD: "MG", ION: "GR", CAT: "ES"
-    };
     // Versioned URL for anything under public/vic3 -- see Vic3Controller.
     // Split so deploy.sh's substitution can't rewrite this check too.
     if (document.getElementById("buildLink").href.includes("__BUILD" + "_SHA__")) document.getElementById("buildLink").remove();
@@ -674,8 +636,9 @@
     const DATA_VERSION = "__DATA_VERSION__";
     const assetVersion = DATA_VERSION.startsWith("__") ? String(Date.now()) : DATA_VERSION;
     const asset = path => `/vic3/${path}?v=${assetVersion}`;
-    const flag = tag => ISO[tag] ? String.fromCodePoint(...[...ISO[tag]].map(c => 0x1F1A5 + c.charCodeAt(0))) : null;
-    const flagHtml = (c, cls = "flag") => flag(c.tag) ? `<span class="${cls}" title="${c.name}">${flag(c.tag)}</span>` : `<span class="${cls} none" title="${c.name}">${c.tag}</span>`;
+    // The country's own 1836 flag, drawn from the game's coat-of-arms recipes (extract_flags.rb). A tag with no
+    // picture (a country formed later, seen in a loaded save) shows its letters instead.
+    const flagHtml = (c, cls = "flag") => `<span class="${cls}" title="${esc(c.name)}"><img class="fimg" src="${asset(`flags/s/${c.tag}.png`)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('none');this.replaceWith('${c.tag}')"></span>`;
     const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
     const ERA_NAMES = { era_1: "Era I · before 1836", era_2: "Era II · 1836–1861", era_3: "Era III · 1862–1886", era_4: "Era IV · 1887–1911", era_5: "Era V · 1911–1936" };
@@ -961,6 +924,11 @@
         <div class="cstats" title="${esc(full)} (tech: production / military / society)">${esc(short)}</div></div>
         ${c.tier ? `<span class="pill" title="Which starting-tech package the game gives this country">Tech tier ${c.tier}</span>` : ""}
         ${state.preview && state.preview !== state.pinned ? `<span class="pill">preview</span>` : ""}`;
+      const corner = document.getElementById("cornerFlag");
+      corner.alt = corner.title = c.name;
+      corner.onload = () => document.body.classList.add("has-flag");
+      corner.onerror = () => document.body.classList.remove("has-flag");
+      corner.src = asset(`flags/${c.tag}.png`);
     }
 
     function renderSubtabs() {

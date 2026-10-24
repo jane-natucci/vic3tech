@@ -321,11 +321,22 @@ class Vic3Extractor
 
   # The game names a country by what it is at the start: TUR is "Turkey" in the files, but a monarchy of that
   # tag is the Ottoman Empire, CHI under a Manchu monarchy the Great Qing, KOR the Joseon. (common/dynamic_country_names)
+  # The names we keep as the game's plain ones: the Hudson's Bay Company is called that in the game's list, not
+  # Rupert's Land, and the Lakota stay the Lakota. The USA is shortened so it fits a list row.
+  KEEP_PLAIN_NAME = %w[HBC LKT].freeze
+  NAME_OVERRIDES = { "USA" => "USA" }.freeze
+
   def use_dynamic_names(countries)
     rules = CoaRules.new(@game, countries.keys.to_set)
     changed = []
     countries.each_value do |c|
       next unless c[:exists]
+
+      if NAME_OVERRIDES.key?(c[:tag])
+        c[:name] = NAME_OVERRIDES[c[:tag]]
+        next
+      end
+      next if KEEP_PLAIN_NAME.include?(c[:tag])
 
       cultures = Vic3Script.list(Vic3Script.value(country_definitions[c[:tag]] || [], "cultures"))
       name_key, = rules.dynamic_name(CoaRules::Facts.new(tag: c[:tag], laws: c[:laws].to_set, cultures: cultures.to_set))
