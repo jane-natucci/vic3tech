@@ -57,7 +57,7 @@ Out of 449 countries (and 66 in Europe):
 [*][b]Mercantilism[/b] is the norm: 264 countries, 59 of 66 in Europe. Only 6 start with [b]Free Trade[/b] -- the free cities of Bremen, Frankfurt, Hamburg, Krakow and Lübeck, plus Columbia District -- and just 3 with [b]Protectionism[/b]: France, Great Britain and the USA.
 [*][b]Monarchy[/b] rules 233 countries; [b]Presidential Republic[/b] 32, [b]Parliamentary Republic[/b] only 3.
 [*][b]Autocracy[/b] is the starting point for 352 countries. Some voting at all is rare: Wealth Voting 19, Census Suffrage 8, Landed Voting 5 -- and nobody starts with Universal Suffrage.
-[*][b]Serfdom[/b]: 296 countries worldwide, but only 3 in Europe.
+[*][b]Serfdom[/b]: 296 countries worldwide, but only 3 in Europe: Russia, the Ottomans and Tarki.
 [*][b]Slavery Banned[/b]: 160 countries, 57 of them in Europe.
 [*][b]Professional Army[/b] in 55 of 66 European countries; the rest of the world mostly starts with [b]Peasant Levies[/b] (316).
 [/list]
