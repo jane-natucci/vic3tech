@@ -54,7 +54,7 @@ Battalion counts aren't the whole story. China's 485 are 410 Irregular Infantry 
 [h2]Laws[/h2]
 Out of 449 countries (and 66 in Europe):
 [list]
-[*][b]Mercantilism[/b] is the norm: 264 countries, 59 of 66 in Europe. Only 6 start with [b]Free Trade[/b] -- the free cities of Bremen, Frankfurt, Hamburg, Krakow and Lübeck, plus Columbia District -- and just 3 with [b]Protectionism[/b]: France, Great Britain and the USA. (Britain's line in the game files carries the developers' own note: "Corn Laws".)
+[*][b]Mercantilism[/b] is the norm: 264 countries, 59 of 66 in Europe. Only 6 start with [b]Free Trade[/b] -- the free cities of Bremen, Frankfurt, Hamburg, Krakow and Lübeck, plus Columbia District -- and just 3 with [b]Protectionism[/b]: France, Great Britain and the USA.
 [*][b]Monarchy[/b] rules 233 countries; [b]Presidential Republic[/b] 32, [b]Parliamentary Republic[/b] only 3.
 [*][b]Autocracy[/b] is the starting point for 352 countries. Some voting at all is rare: Wealth Voting 19, Census Voting 8, Landed Voting 5 -- and nobody starts with Universal Suffrage.
 [*][b]Serfdom[/b]: 296 countries worldwide, but only 3 in Europe.
