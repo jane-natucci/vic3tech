@@ -22,14 +22,14 @@ SECTION 1 TITLE: About this guide
 ================================================================================
 Before a campaign I always want to know: [i]who actually starts ahead?[/i] Who has the tech, the army, the navy, the progressive laws? The game doesn't show that side by side, so I read it out of the game files and put it in one place.
 
-This guide sums up what the 1836 start looks like (game version 1.13.11). If you want to check a specific country, I also made a free fan site with all of it: [url=https://vic3tech.jane.berlin]vic3tech.jane.berlin[/url] -- the rest of the guide shows how to use it, including on your own save.
+This guide sums up what the 1836 start looks like (game version 1.15). If you want to check a specific country, I also made a free fan site with all of it: [url=https://vic3tech.jane.berlin]vic3tech.jane.berlin[/url] -- the rest of the guide shows how to use it, including on your own save.
 
-All numbers come straight from the game's files. Starting laws were also checked law by law against a save made at the very start of a new game: every law of all 443 countries matches.
+All numbers come straight from the game's files. Starting laws were also checked law by law against a save made at the very start of a new game on version 1.13.11, where every law of all 443 countries matched; the 1.15 laws come from the same files and haven't been rechecked against a save yet.
 
 ================================================================================
 SECTION 2 TITLE: The 1836 start in numbers
 ================================================================================
-All counts cover the 443 countries that exist on 1 January 1836 -- every one that owns land, not only the ones you'd pick to play: 158 of them are decentralized nations and 117 are subjects (puppets, colonies, protectorates and so on). "Europe" means the 64 whose capital is in Europe.
+All counts cover the 449 countries that exist on 1 January 1836 -- every one that owns land, not only the ones you'd pick to play: 158 of them are decentralized nations and 123 are subjects (puppets, colonies, protectorates and so on). "Europe" means the 66 whose capital is in Europe.
 
 [h2]Technology[/h2]
 There are 179 technologies. The game gives every country one of 7 starting tech packages ("tiers"); only 5 countries get the top one:
@@ -38,28 +38,28 @@ There are 179 technologies. The game gives every country one of 7 starting tech 
 [*][b]Belgium, France, Prussia and the USA[/b] follow with 52 each.
 [*]In military tech they're all level: 16 each.
 [/list]
-Most of the world starts far behind: 127 countries are in tier 4, and 171 in tiers 6 and 7.
+Most of the world starts far behind: 132 countries are in tier 4, and 171 in tiers 6 and 7.
 
 [h2]Armies and navies[/h2]
 [table]
 [tr][th]Biggest armies (battalions)[/th][th]Biggest navies (ships)[/th][/tr]
-[tr][td]China 485[/td][td]Great Britain 196[/td][/tr]
-[tr][td]East India Company 208[/td][td]Russia 76[/td][/tr]
-[tr][td]Russia 206[/td][td]France 74[/td][/tr]
-[tr][td]France 187[/td][td]Ottomans 28[/td][/tr]
-[tr][td]Ottomans 162[/td][td]Netherlands 24[/td][/tr]
+[tr][td]China 485[/td][td]Great Britain 226[/td][/tr]
+[tr][td]East India Company 208[/td][td]France 92[/td][/tr]
+[tr][td]Russia 200[/td][td]Russia 91[/td][/tr]
+[tr][td]France 187[/td][td]Ottomans 37[/td][/tr]
+[tr][td]Ottomans 162[/td][td]Netherlands 33[/td][/tr]
 [/table]
 Battalion counts aren't the whole story. China's 485 are 410 Irregular Infantry and 75 Hussars; Irregular Infantry has 10 offense and 10 defense, against 20/25 for the Line Infantry most of Russia's and Austria's army is, and 25/35 for the Skirmish Infantry of France, Britain and Prussia. (The 1836 files give battalion counts, not how many men are in them.)
 
 [h2]Laws[/h2]
-Out of 443 countries (and 64 in Europe):
+Out of 449 countries (and 66 in Europe):
 [list]
-[*][b]Mercantilism[/b] is the norm: 258 countries, 57 of 64 in Europe. Only 6 start with [b]Free Trade[/b] -- the free cities of Bremen, Frankfurt, Hamburg, Krakow and Lübeck, plus Oregon -- and just 3 with [b]Protectionism[/b]: France, Great Britain and the USA. (Britain's line in the game files carries the developers' own note: "Corn Laws".)
-[*][b]Monarchy[/b] rules 227 countries; [b]Presidential Republic[/b] 32, [b]Parliamentary Republic[/b] only 3.
-[*][b]Autocracy[/b] is the starting point for 346 countries. Some voting at all is rare: Wealth Voting 19, Census Voting 8, Landed Voting 5 -- and nobody starts with Universal Suffrage.
-[*][b]Serfdom[/b]: 291 countries worldwide, but only 2 in Europe.
-[*][b]Slavery Banned[/b]: 155 countries, 55 of them in Europe.
-[*][b]Professional Army[/b] in 54 of 64 European countries; the rest of the world mostly starts with [b]Peasant Levies[/b] (311).
+[*][b]Mercantilism[/b] is the norm: 264 countries, 59 of 66 in Europe. Only 6 start with [b]Free Trade[/b] -- the free cities of Bremen, Frankfurt, Hamburg, Krakow and Lübeck, plus Oregon -- and just 3 with [b]Protectionism[/b]: France, Great Britain and the USA. (Britain's line in the game files carries the developers' own note: "Corn Laws".)
+[*][b]Monarchy[/b] rules 233 countries; [b]Presidential Republic[/b] 32, [b]Parliamentary Republic[/b] only 3.
+[*][b]Autocracy[/b] is the starting point for 352 countries. Some voting at all is rare: Wealth Voting 19, Census Voting 8, Landed Voting 5 -- and nobody starts with Universal Suffrage.
+[*][b]Serfdom[/b]: 296 countries worldwide, but only 3 in Europe.
+[*][b]Slavery Banned[/b]: 160 countries, 57 of them in Europe.
+[*][b]Professional Army[/b] in 55 of 66 European countries; the rest of the world mostly starts with [b]Peasant Levies[/b] (316).
 [/list]
 
 ================================================================================
