@@ -80,7 +80,7 @@ class Vic3Extractor
 
   # Country name -> tag, for other pages that mention countries by name and want to link here
   # (paradox-scores does this for achievement texts). Aliases cover how texts say a name.
-  LINK_ALIASES = { "USA" => "USA", "Ottoman Empire" => "TUR", "Great Qing" => "CHI", "British India Company" => "BIC", "Sikh Empire" => "PAN" }.freeze
+  LINK_ALIASES = { "USA" => "USA", "Ottoman Empire" => "TUR", "Great Qing" => "CHI", "British India Company" => "BIC", "Sikh Empire" => "PAN", "Poland" => "POL" }.freeze
 
   def write_links(countries)
     tags = countries.map { |c| c[:tag] }.to_set
@@ -575,8 +575,11 @@ class Vic3Extractor
     # and the Armies tab covers the military anyway) and subsistence farms
     # (every rural state has them; they'd swamp agriculture in a save).
     # Monuments sit in a group with no parent; they count as government.
+    # Also left out: scenery the game only draws on the map (Giza, the Winter
+    # Palace), which it names with a note that the text must never be shown.
     buildings = building_defs.filter_map do |id, d|
       next if d[:group].to_s.include?("subsistence")
+      next if text(id).to_s.include?("is a dummy building")
       sector = sector_of.(d[:group]) || "government"
       next if sector == "military"
       [id, { name: text(id) || humanize(id), group: d[:group], group_name: text(d[:group]) || humanize(d[:group].to_s),
@@ -680,6 +683,7 @@ class Vic3Extractor
           next unless scope&.start_with?("c:") && body.is_a?(Array) && countries.key?(tag)
           definition = country_definitions[tag] || []
           country = {
+            tag: tag,
             type: Vic3Script.value(definition, "country_type"),
             religion: Vic3Script.value(definition, "religion") || culture_religion[Vic3Script.list(Vic3Script.value(definition, "cultures")).first],
             hierarchy: Vic3Script.value(definition, "social_hierarchy"),
@@ -787,6 +791,9 @@ class Vic3Extractor
       when "country_is_islamic" then ISLAMIC.include?(country[:religion]) == (v == "yes")
       when "is_country_type" then country[:type] == v
       when "has_dlc_feature" then true
+      when "OR" then v.any? { |entry| law_condition?([entry], country, unknown: unknown) }
+      when "AND" then law_condition?(v, country, unknown: unknown)
+      when /\Ac:(\w+)\z/ then v == "this" ? country[:tag] == $1 : unknown # c:RUS ?= this: a law for that one country
       else
         next true if unknown
         (@unknown_law_conditions ||= Set.new).add?(k) && warn("Laws: treating unknown condition #{k} as false")

@@ -1219,9 +1219,14 @@
     // game runs). Money transfers are already £/week. A save's price history is
     // indexed by the good's position in the full goods list (goods that never
     // reach the world market -- services, transportation, electricity, gold --
-    // have none).
+    // have none). Update 1.15 added copper in the middle of that list, so a
+    // save from before it (one price row fewer) numbers its goods without it.
     state.tradeKind = "treaties"; state.treatyScope = "mine";
-    const goodIndex = id => state.data.goods.findIndex(g => g.id === id);
+    const saveGoods = () => {
+      const goods = state.data.goods, rows = state.saveTrade?.prices.length;
+      return rows && rows < goods.length ? goods.filter(g => g.id !== "copper") : goods;
+    };
+    const goodIndex = id => saveGoods().findIndex(g => g.id === id);
     const goodById = id => state.data.goods.find(g => g.id === id);
     const priceHistory = id => state.saveTrade?.prices[goodIndex(id)] || null;
     const priceOf = id => priceHistory(id)?.at(-1) ?? goodById(id)?.cost ?? 0;
@@ -1338,7 +1343,7 @@
       const states = e.states.filter(st => (st.buildings.building_trade_center || 0) > 0 || Object.keys(st.trade || {}).length)
         .sort((a, b) => (b.buildings.building_trade_center || 0) - (a.buildings.building_trade_center || 0));
       if (!states.length) { body.innerHTML = `<p class="muted">${esc(c.name)} has no trade centers${save ? " in this save" : " at the start"}.</p>`; return; }
-      const goods = state.data.goods;
+      const goods = saveGoods();
       // ≈ £/week of goods moved: trades × the good's trade quantity × world price.
       const worth = (i, trades) => Math.abs(trades) * (goods[i]?.traded_quantity || 10) * priceOf(goods[i]?.id);
       const stateWorth = trade => Object.entries(trade || {}).reduce((n, [i, v]) => n + worth(i, v), 0);
