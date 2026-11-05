@@ -5,3 +5,6 @@
 !/vic3/og-image.jpg
 !/vic3/save-worker.js
 .DS_Store
+# The Steam guide's text is tracked; its screenshots show Paradox's game art.
+/steam-guide/*
+!/steam-guide/guide.txt
