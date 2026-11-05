@@ -49,7 +49,7 @@ Most of the world starts far behind: 132 countries are in tier 4, and 171 in tie
 [tr][td]France 187[/td][td]Ottomans 37[/td][/tr]
 [tr][td]Ottomans 162[/td][td]Netherlands 33[/td][/tr]
 [/table]
-Battalion counts aren't the whole story. China's 485 are 410 Irregular Infantry and 75 Hussars; Irregular Infantry has 10 offense and 10 defense, against 20/25 for the Line Infantry most of Russia's and Austria's army is, and 25/35 for the Skirmish Infantry of France, Britain and Prussia. (The 1836 files give battalion counts, not how many men are in them.)
+Battalion counts aren't the whole story. China's 485 are 410 Irregular Infantry and 75 Hussars; Irregular Infantry has 10 offense and 10 defense, against 20/25 for the Line Infantry most of Russia's and Austria's army is, and 25/35 for the Skirmish Infantry of France, Britain and Prussia.
 
 [h2]Laws[/h2]
 Out of 449 countries (and 66 in Europe):
