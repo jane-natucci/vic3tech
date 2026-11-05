@@ -36,9 +36,9 @@ There are 179 technologies. The game gives every country one of 7 starting tech 
 [list]
 [*][b]Great Britain[/b] starts with the most: 53 techs.
 [*][b]Belgium, France, Prussia and the USA[/b] follow with 51 each.
-[*]In military tech they're all level: 16 each.
+[*]All five start with 16 military technologies.
 [/list]
-Most of the world starts far behind: 132 countries are in tier 4, and 171 in tiers 6 and 7.
+Most countries start with substantially fewer technologies: 132 are in tier 4, and 171 in tiers 6 and 7.
 
 [h2]Armies and navies[/h2]
 [table]
