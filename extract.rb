@@ -656,6 +656,7 @@ class Vic3Extractor
   # borders the sea on the province map -- found by that check, the game's
   # reason isn't in the files. Sakuye (Kenya) has no navy law in the save.
   LANDLOCKED = %w[SKY].freeze
+  CAESAROPAPISM_SUBJECTS = %w[colony dominion chartered_company crown_land personal_union].freeze
 
   def extract_laws(countries)
     groups = read(@game.join("common/law_groups/00_laws.txt")).select { |_, _, b| b.is_a?(Array) }.map do |id, _, body|
@@ -704,6 +705,8 @@ class Vic3Extractor
     end
     culture_religion = files("cultures").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }
       .to_h { |id, _, body| [id, Vic3Script.value(body, "religion")] }
+    subjects = CoaRules.new(@game, countries.keys.to_set)
+    facts = {}
     Dir[@game.join("common/history/countries/*.txt")].sort.each do |f|
       read(f).each do |_, _, top|
         next unless top.is_a?(Array)
@@ -713,11 +716,14 @@ class Vic3Extractor
           definition = country_definitions[tag] || []
           country = {
             tag: tag,
+            overlord: subjects.subject_pact(tag)&.first,
+            subject_type: subjects.subject_pact(tag)&.last,
             type: Vic3Script.value(definition, "country_type"),
             religion: Vic3Script.value(definition, "religion") || culture_religion[Vic3Script.list(Vic3Script.value(definition, "cultures")).first],
             hierarchy: Vic3Script.value(definition, "social_hierarchy"),
             coastal: coastal_tags.include?(tag) && !LANDLOCKED.include?(tag)
           }
+          facts[tag] = country
           active = {}
           apply_laws(body, country, effects, laws, active)
           techs = countries[tag][:techs].to_set
@@ -745,7 +751,21 @@ class Vic3Extractor
         end
       end
     end
+    # Laws the game shows to named countries only (Russia's Third Section, Japan's Bakufu), with the subjects it
+    # lets share them, as they stand at the start. The page leaves them out for everyone else.
+    laws.each do |id, law|
+      rule = (visible_if[id] || []).find { |entry| names_countries?(entry) } or next
+      law[:only] = facts.select { |_, country| law_condition?([rule], country) }.keys
+    end
     [groups.reject { |g| g[:laws].empty? }.map { |g| g.except(:hierarchy, :enable) }, laws]
+  end
+
+  # c:RUS ?= this, or an OR of that and subjects of the country (not of cultures or anything else).
+  def names_countries?((key, _, value))
+    return value == "this" if key&.start_with?("c:")
+
+    key == "OR" && value.any? { |k, _, v| k&.start_with?("c:") && v == "this" } &&
+      value.all? { |k, _, v| k == "AND" || (k&.start_with?("c:") && v == "this") }
   end
 
   def apply_laws(block, country, effects, laws, active)
@@ -823,6 +843,10 @@ class Vic3Extractor
       when "OR" then v.any? { |entry| law_condition?([entry], country, unknown: unknown) }
       when "AND" then law_condition?(v, country, unknown: unknown)
       when /\Ac:(\w+)\z/ then v == "this" ? country[:tag] == $1 : unknown # c:RUS ?= this: a law for that one country
+      when "exists" then true
+      when "is_subject_of" then v == "c:#{country[:overlord]}"
+      when "country_is_subject_type_valid_for_caesaropapism"
+        country[:religion] == "orthodox" && CAESAROPAPISM_SUBJECTS.include?(country[:subject_type])
       else
         next true if unknown
         (@unknown_law_conditions ||= Set.new).add?(k) && warn("Laws: treating unknown condition #{k} as false")

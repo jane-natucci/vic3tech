@@ -1453,6 +1453,8 @@
     // laws it needs (Subjecthood needs Monarchy, Theocracy, ...).
     const lawNeedsLaw = (c, id) => lawOf(id).laws?.length > 0 && !lawOf(id).laws.some(l => lawsOf(c).includes(l));
     const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t)) || lawNeedsLaw(c, id);
+    // The game only shows some laws to named countries (Russia's Third Section), so neither does the page.
+    const lawShown = (c, id) => !lawOf(id).only || lawOf(id).only.includes(c.tag) || lawsOf(c).includes(id);
     function lawChip(c, id, active) {
       const l = lawOf(id), locked = !active && lawLocked(c, id);
       const since = active && c.lawSince?.[id];
@@ -1498,8 +1500,8 @@
         body.innerHTML = lawGroupsOf(c).map(g => {
           const head = g.category !== cat ? `<div class="law-cat">${esc(g.category_name)}</div>` : ""; cat = g.category;
           const mine = g.laws.find(id => lawsOf(c).includes(id));
-          return head + `<div class="law-row"><b>${esc(g.name)}</b><div class="laws">${lawChip(c, mine, true)}${g.laws.filter(id => id !== mine).map(id => lawChip(c, id, false)).join("")}</div>` +
-            (g.laws.includes(state.lawFocus) ? lawBox(c, state.lawFocus, g) : "") + `</div>`;
+          return head + `<div class="law-row"><b>${esc(g.name)}</b><div class="laws">${lawChip(c, mine, true)}${g.laws.filter(id => id !== mine && lawShown(c, id)).map(id => lawChip(c, id, false)).join("")}</div>` +
+            (g.laws.includes(state.lawFocus) && lawShown(c, state.lawFocus) ? lawBox(c, state.lawFocus, g) : "") + `</div>`;
         }).join("");
         return;
       }

@@ -67,6 +67,10 @@ class CoaRules
   # The country that holds this one as a subject at the start, if any.
   def direct_overlord(tag) = @pacts.find { |_, sub, t| sub == tag && SUBJECT_PACTS.include?(t) }&.first
 
+  # [overlord, subject, type] of this country at the start, if it's a subject. Unlike direct_overlord this counts
+  # crown lands, which the flag and name rules above don't handle.
+  def subject_pact(tag) = @pacts.find { |_, sub, t| sub == tag && (SUBJECT_PACTS.include?(t) || t == "crown_land") }
+
   # True when a dynamic name's trigger can't be judged from what we know (so the plain name may be wrong).
   def dynamic_name_unsure?(facts)
     @names[facts.tag].any? do |d|
