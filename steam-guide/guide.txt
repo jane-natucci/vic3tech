@@ -24,7 +24,7 @@ Before a campaign I always want to know: [i]who actually starts ahead?[/i] Who h
 
 This guide sums up what the 1836 start looks like (game version 1.15). If you want to check a specific country, I also made a free fan site with all of it: [url=https://vic3tech.jane.berlin]vic3tech.jane.berlin[/url] -- the rest of the guide shows how to use it, including on your own save.
 
-All numbers come straight from the game's files. Starting laws were also checked law by law against a save made at the very start of a new game on version 1.13.11, where every law of all 443 countries matched; the 1.15 laws come from the same files and haven't been rechecked against a save yet.
+All numbers come straight from the game's files. Starting laws, technologies, armies and navies were also checked against a save made on the first day of a new game on version 1.15: they match for all 449 countries.
 
 ================================================================================
 SECTION 2 TITLE: The 1836 start in numbers
@@ -34,8 +34,8 @@ All counts cover the 449 countries that exist on 1 January 1836 -- every one tha
 [h2]Technology[/h2]
 There are 179 technologies. The game gives every country one of 7 starting tech packages ("tiers"); only 5 countries get the top one:
 [list]
-[*][b]Great Britain[/b] starts with the most: 54 techs.
-[*][b]Belgium, France, Prussia and the USA[/b] follow with 52 each.
+[*][b]Great Britain[/b] starts with the most: 53 techs.
+[*][b]Belgium, France, Prussia and the USA[/b] follow with 51 each.
 [*]In military tech they're all level: 16 each.
 [/list]
 Most of the world starts far behind: 132 countries are in tier 4, and 171 in tiers 6 and 7.

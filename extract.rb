@@ -41,6 +41,7 @@ class Vic3Extractor
     techs.each_value { |t| t[:unlocks].uniq! }
     countries = extract_countries(techs)
     add_armies(countries)
+    add_barracks_armies(countries)
     icons = write_icons(techs)
     units, ships, mobilization = extract_units, extract_ships, extract_mobilization
     law_groups, laws = extract_laws(countries)
@@ -61,7 +62,7 @@ class Vic3Extractor
       goods: extract_goods,
       treaty_articles: files("treaty_articles").flat_map { |f| read(f) }.select { |_, _, b| b.is_a?(Array) }.to_h { |id, _, _| [id, text(id) || humanize(id)] },
       treaties: extract_treaties,
-      techs: techs.values.map { |t| t.except(:texture).merge(icon: icons[t[:id]]) },
+      techs: techs.values.map { |t| t.except(:texture, :researchable).merge(icon: icons[t[:id]]) },
       units: units,
       ships: ships,
       mobilization: mobilization,
@@ -154,7 +155,8 @@ class Vic3Extractor
         texture: Vic3Script.value(body, "texture"),
         requires: Vic3Script.list(Vic3Script.value(body, "unlocking_technologies")),
         modifiers: modifiers,
-        unlocks: []
+        unlocks: [],
+        researchable: Vic3Script.value(body, "can_research") != "no"
       }
     end
   end
@@ -171,7 +173,8 @@ class Vic3Extractor
   end
 
   def extract_countries(techs)
-    by_era = techs.values.group_by { |t| t[:era] }.transform_values { |ts| ts.map { |t| t[:id] } }
+    # A starting package's whole era leaves out techs nobody can research (Sericulture): those are only given by name.
+    by_era = techs.values.select { |t| t[:researchable] }.group_by { |t| t[:era] }.transform_values { |ts| ts.map { |t| t[:id] } }
     tiers = read(@game.join("common/scripted_effects/00_starting_inventions.txt")).to_h do |name, _, body|
       ids = []
       Vic3Script.walk(body) do |k, v|
@@ -391,6 +394,32 @@ class Vic3Extractor
         end
       end
     end
+  end
+
+  # A country with no formations in the history files starts with one battalion per level of its barracks in
+  # common/history/buildings instead: Line Infantry if it has that tech, otherwise Irregular Infantry. Checked
+  # against a save from the first day of 1.15: all 128 such countries match, in number and type.
+  def add_barracks_armies(countries)
+    files("history/buildings").flat_map { |f| read(f) }.each do |_, _, top|
+      next unless top.is_a?(Array)
+      top.each do |state, _, owners|
+        next unless state&.start_with?("s:") && owners.is_a?(Array)
+        owners.each do |owner, _, body|
+          next unless owner&.start_with?("region_state:") && body.is_a?(Array)
+          country = countries[owner.delete_prefix("region_state:")]
+          next unless country[:exists] && country[:army].values.none? { |unit| !unit[:from_barracks] }
+          Vic3Script.walk(body) do |k, v|
+            next unless k == "create_building" && v.is_a?(Array) && Vic3Script.value(v, "building") == "building_barrack"
+            levels = 0
+            Vic3Script.walk(Vic3Script.value(v, "add_ownership") || []) { |lk, lv| levels += lv.to_i if lk == "levels" }
+            id = country[:techs].include?("line_infantry") ? "combat_unit_type_line_infantry" : "combat_unit_type_irregular_infantry"
+            entry = country[:army][id] ||= { name: text(id) || humanize(id), group: "infantry", count: 0, from_barracks: true }
+            entry[:count] += levels
+          end
+        end
+      end
+    end
+    countries.each_value { |c| c[:army].each_value { |unit| unit.delete(:from_barracks) } }
   end
 
   def write_icons(techs)
