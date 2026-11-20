@@ -20,7 +20,7 @@ export const data = () => ({
     tech("navigation", "era_1", "military"),
     tech("drydocks", "era_1", "military", ["navigation"]),
     tech("standing_army", "era_1", "military", [], { modifiers: [{ key: "unit_offense_mult", name: "Offense", value: 0.1 }] }),
-    tech("gunsmithing", "era_2", "military", ["standing_army"]),
+    tech("gunsmithing", "era_2", "military", ["standing_army"], { unlocks: [{ name: "Line Infantry", kind: "unit" }] }),
     tech("admiralty", "era_2", "military", ["drydocks"]),
     tech("general_staff", "era_2", "military", ["gunsmithing"]),
     tech("ironclad_tech", "era_3", "military", ["admiralty"]),
