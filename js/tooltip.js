@@ -1,7 +1,7 @@
 // The hover box over the army and economy tables' bars (per unit or building type).
 import { state } from "./state.js";
 import { esc } from "./helpers.js";
-import { SECTORS, economy, econOf, bName } from "./views/economy.js";
+import { econTip } from "./views/economy.js";
 import { armyTip, navyTip } from "./views/armies.js";
 
 // One line of a tooltip: a group ("g", bold, with its colour) or an item in it ("u"), and its number.
@@ -12,15 +12,7 @@ export const tipRow = (cls, name, n, color) =>
 function tipHtml(c, kind) {
   if (kind === "army") return armyTip(c);
   if (kind === "navy") return navyTip(c);
-  if (kind === "econ") {
-    const e = econOf(c);
-    return `<b>${esc(c.name)} · ${e.total} building levels</b>` + SECTORS.filter(([s]) => e.sectors[s]).map(([s, label, v]) => {
-      const ids = Object.keys(e.levels).filter(id => economy.buildings[id]?.sector === s).sort((a, b) => e.levels[b] - e.levels[a]);
-      return `<div class="g"><span><span class="sw" style="background:var(${v})"></span>${label} (${Math.round(e.sectors[s] / e.total * 100)}%)</span><span class="n">${e.sectors[s]}</span></div>` +
-        ids.slice(0, 6).map(id => `<div class="u"><span>${esc(bName(id))}</span><span class="n">${e.levels[id]}</span></div>`).join("") +
-        (ids.length > 6 ? `<div class="u"><span>+${ids.length - 6} more</span><span></span></div>` : "");
-    }).join("");
-  }
+  if (kind === "econ") return econTip(c);
 }
 
 export const tip = document.getElementById("tip");

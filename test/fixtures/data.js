@@ -119,6 +119,7 @@ export const economy = () => ({
                     discoverable: { building_gold_mine: { discovered: 1, undiscovered: 4 } } },
     STATE_BRETLAND: { name: "Bretland", provinces: 4, arable_land: 20, arable: ["building_wheat_farm"], capped: { building_iron_mine: 10 }, discoverable: {} },
     STATE_KYUSHU: { name: "Kyushu", provinces: 6, arable_land: 30, arable: ["building_wheat_farm"], capped: {}, discoverable: {} },
+    STATE_EZO: { name: "Ezo", provinces: 3, arable_land: 10, arable: [], capped: {}, discoverable: {} },
   },
   countries: {
     GBR: { states: [
@@ -127,6 +128,6 @@ export const economy = () => ({
       state("STATE_BRETLAND", "Bretland", 0.5, 20, { building_iron_mine: 4 }, { capped: { building_iron_mine: 10 } }),
     ] },
     FRA: { states: [state("STATE_BRETLAND", "Bretland", 0.5, 20, { building_wheat_farm: 6 }, { capped: { building_iron_mine: 10 } })] },
-    JAP: { states: [state("STATE_KYUSHU", "Kyushu", 1, 30, { building_wheat_farm: 2 })] },
+    JAP: { states: [state("STATE_KYUSHU", "Kyushu", 1, 30, { building_wheat_farm: 2 }), state("STATE_EZO", "Ezo", 1, 10, {}, { arable: [] })] },
   },
 });

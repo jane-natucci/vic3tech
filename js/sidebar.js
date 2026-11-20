@@ -4,7 +4,7 @@ import { flagHtml, esc, isEurope, battalions, ships, menOf, catCount, viewOn, no
 import { render, pin } from "./page.js";
 import { renderArmies } from "./views/armies.js";
 import { UNIT_KINDS, canBuild } from "./views/units.js";
-import { SECTORS, economy, econOf, resName, renderEconomy } from "./views/economy.js";
+import { SECTORS, economy, econOf, resName, resourceTotal, renderEconomy } from "./views/economy.js";
 import { treatiesOf, renderTrade } from "./views/trade.js";
 import { progressiveness, renderLaws } from "./views/laws.js";
 
@@ -34,10 +34,10 @@ function sidebarMetric() {
     const k = state.econSort;
     if (state.econKind === "resources") {
       const id = k === "name" ? "arable_land" : k;
-      return numeric(resName(id).toLowerCase(), c => Math.round((econOf(c).resources[id]?.amount || 0) + (econOf(c).resources[id]?.undiscovered || 0)));
+      return numeric(resName(id).toLowerCase(), c => Math.round(resourceTotal(c, id)));
     }
-    const sector = SECTORS.find(([sec]) => sec === k);
-    return sector ? numeric(`${sector[1].toLowerCase()} building levels`, c => econOf(c).sectors[k] || 0)
+    const sector = SECTORS.find(s => s.id === k);
+    return sector ? numeric(`${sector.label.toLowerCase()} building levels`, c => econOf(c).sectors[k] || 0)
                   : numeric("building levels", c => econOf(c).total);
   }
   const cat = state.category;
