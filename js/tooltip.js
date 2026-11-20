@@ -1,11 +1,17 @@
 // The hover box over the army and economy tables' bars (per unit or building type).
 import { state } from "./state.js";
-import { esc, UNIT_GROUPS, battalions, ships } from "./helpers.js";
+import { esc } from "./helpers.js";
 import { SECTORS, economy, econOf, bName } from "./views/economy.js";
+import { armyTip, navyTip } from "./views/armies.js";
 
-// Hover breakdown for the army composition bar (per group, then per unit
-// type) and the ships column (per ship type).
+// One line of a tooltip: a group ("g", bold, with its colour) or an item in it ("u"), and its number.
+export const tipRow = (cls, name, n, color) =>
+  `<div class="${cls}"><span>${color ? `<span class="sw" style="background:var(${color})"></span>` : ""}${esc(name)}</span><span class="n">${n.toLocaleString("en")}</span></div>`;
+
+// What the box shows: the army or navy breakdown (Armies tab) or the buildings by sector (Economy tab).
 function tipHtml(c, kind) {
+  if (kind === "army") return armyTip(c);
+  if (kind === "navy") return navyTip(c);
   if (kind === "econ") {
     const e = econOf(c);
     return `<b>${esc(c.name)} · ${e.total} building levels</b>` + SECTORS.filter(([s]) => e.sectors[s]).map(([s, label, v]) => {
@@ -15,18 +21,8 @@ function tipHtml(c, kind) {
         (ids.length > 6 ? `<div class="u"><span>+${ids.length - 6} more</span><span></span></div>` : "");
     }).join("");
   }
-  const row = (cls, name, n, sw) => `<div class="${cls}"><span>${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ""}${esc(name)}</span><span class="n">${n.toLocaleString("en")}</span></div>`;
-  if (kind === "navy") {
-    const list = Object.values(c.navy).sort((a, b) => b.count - a.count);
-    return `<b>${esc(c.name)} · ${ships(c)} ships</b>` + (list.map(s => row("u", s.name, s.count)).join("") || `<div class="u">No starting navy</div>`);
-  }
-  const groups = [...UNIT_GROUPS, ["other", "Other", "--other"]].map(([g, label, v]) => {
-    const units = Object.values(c.army).filter(u => (UNIT_GROUPS.some(([id]) => id === u.group) ? u.group : "other") === g).sort((a, b) => b.count - a.count);
-    return { label, v, units, n: units.reduce((n, u) => n + u.count, 0) };
-  }).filter(g => g.n);
-  return `<b>${esc(c.name)} · ${battalions(c)} battalions</b>` + groups.map(g =>
-    row("g", `${g.label} (${Math.round(g.n / battalions(c) * 100)}%)`, g.n, g.v) + g.units.map(u => row("u", u.name, u.count)).join("")).join("");
 }
+
 export const tip = document.getElementById("tip");
 document.body.appendChild(tip); // shared by the army and economy tables
 const showTip = e => {

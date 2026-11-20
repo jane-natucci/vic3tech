@@ -17,7 +17,6 @@ export const flagHtml = (c, cls = "flag") => `<span class="${cls}" title="${esc(
 export const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
 export const ERA_NAMES = { era_1: "Era I · before 1836", era_2: "Era II · 1836–1861", era_3: "Era III · 1862–1886", era_4: "Era IV · 1887–1911", era_5: "Era V · 1911–1936" };
-export const UNIT_GROUPS = [["infantry", "Infantry", "--inf"], ["cavalry", "Cavalry", "--cav"], ["artillery", "Artillery", "--art"]];
 
 export const isEurope = c => c.region === "europe";
 export const battalions = c => Object.values(c.army).reduce((n, u) => n + u.count, 0);
