@@ -90,6 +90,21 @@ export function navyTip(c) {
   return `<b>${esc(c.name)} · ${ships(c)} ships</b>` + rows;
 }
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const armiesTab = {
+  view: "armyView", hash: "army", followsScope: true,
+  render: renderArmies,
+  // The sidebar follows the table's sort column (battalions when it's sorted by name or by the bar).
+  ranking() {
+    return {
+      ships: { label: "ships", value: ships },
+      military: { label: "military techs", value: c => catCount(c, "military"), total: state.layout.military.techs.length },
+      men: { label: "men", value: menOf },
+    }[state.armySort] || { label: "battalions", value: battalions };
+  },
+};
+
 // --- Clicks ------------------------------------------------------------------------------------------------------
 
 document.getElementById("armyTable").addEventListener("click", e => {

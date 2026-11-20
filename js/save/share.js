@@ -2,9 +2,8 @@
 import { state } from "../state.js";
 import { esc } from "../helpers.js";
 import { setSaveStatus, applySave, renderSaveBanner } from "./load.js";
-import { markShared } from "./recent.js";
+import { markShared, gzip } from "./recent.js";
 
-// --- Sharing a loaded save --------------------------------------------------
 // POSTs the gzipped summary to /api/share (CloudFront -> the vic3tech-share
 // Lambda, lambda/share.mjs), which stores it as /shares/<id>.json.gz. The
 // link carries the id in ?s= (the #hash keeps tracking country/tab).
@@ -12,8 +11,8 @@ export async function shareSave() {
   const btn = document.getElementById("shareSave");
   if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
   try {
-    const gz = await new Response(new Blob([JSON.stringify(state.saveSummary)]).stream().pipeThrough(new CompressionStream("gzip"))).blob();
-    const res = await fetch("/api/share", { method: "POST", headers: { "content-type": "application/octet-stream" }, body: gz });
+    const body = await gzip(JSON.stringify(state.saveSummary));
+    const res = await fetch("/api/share", { method: "POST", headers: { "content-type": "application/octet-stream" }, body });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
     const { id } = await res.json();
     markShared(state.historyKey, id);

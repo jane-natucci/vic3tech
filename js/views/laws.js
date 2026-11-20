@@ -202,6 +202,15 @@ const flagButtons = countries => countries.map(x =>
   `<span data-tag="${x.tag}" class="${x.tag === state.pinned ? "pinned" : ""}">${flagHtml(x, "")}</span>`
 ).join("");
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const lawsTab = {
+  view: "lawView", hash: "laws", followsScope: true,
+  subTabs: { key: "lawKind", values: ["country", "compare"] },
+  render: renderLaws,
+  ranking: () => ({ label: "progressiveness", value: progressiveness }),
+};
+
 // --- Clicks ------------------------------------------------------------------------------------------------------
 
 document.getElementById("lawTabs").addEventListener("click", e => {

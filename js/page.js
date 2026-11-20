@@ -1,59 +1,40 @@
-// The page as a whole: the #hash in the address (which country, tab and sub-tab is open), switching tabs,
+// The page as a whole: its tabs, the #hash in the address (which country, tab and sub-tab is open), switching tabs,
 // pinning a country, and render(), which redraws whatever is visible.
 import { state } from "./state.js";
 import { viewOn } from "./helpers.js";
 import { renderHeader } from "./header.js";
 import { renderSidebar } from "./sidebar.js";
-import { scrollToTech, renderTree, renderDetail, renderSubtabs } from "./views/tech.js";
-import { renderArmies } from "./views/armies.js";
-import { UNIT_KINDS, renderUnits } from "./views/units.js";
-import { renderEconomy } from "./views/economy.js";
-import { renderTrade } from "./views/trade.js";
-import { renderLaws } from "./views/laws.js";
+import { scrollToTech, techTab } from "./views/tech.js";
+import { armiesTab } from "./views/armies.js";
+import { unitsTab } from "./views/units.js";
+import { economyTab } from "./views/economy.js";
+import { tradeTab } from "./views/trade.js";
+import { lawsTab } from "./views/laws.js";
 
-// Hash format: "#TAG" (country only, Technology tab), "#TAG/tech_id"
-// (country + a specific tech, scrolled to and highlighted on load --
-// see scrollToTech and the tree click handler below), or
-// "#TAG/view_id" (country + a non-Technology tab, e.g. "#SIC/economy"),
-// optionally followed by that tab's own sub-tab ("#SIC/economy/resources",
-// "#GBR/units/ships") -- see VIEW_HASH/SUB_KEY/syncHash below, which is
-// what keeps the address bar in sync as you switch tabs or sub-tabs, so
-// a link copied at any point actually reopens exactly where it was
-// copied from instead of always defaulting back to Technology (the
-// only tab/sub-tab a fresh page load can otherwise guess).
-const VIEW_HASH = { techView: null, armyView: "army", unitView: "units", economyView: "economy", tradeView: "trade", lawView: "laws" };
-const HASH_VIEW = { army: "armyView", units: "unitView", economy: "economyView", trade: "tradeView", laws: "lawView" };
-// Which state key holds each tab's own sub-tab, and what values are
-// valid for it -- economyView's is checked against a fixed list since
-// ECON_KINDS doesn't exist as a named lookup the way UNIT_KINDS does.
-export const SUB_KEY = { unitView: "unitKind", economyView: "econKind", tradeView: "tradeKind", lawView: "lawKind" };
-const SUB_VALID = { unitView: k => k in UNIT_KINDS, economyView: k => k === "buildings" || k === "resources", tradeView: k => k === "treaties" || k === "prices" || k === "centers",
-                    lawView: k => k === "country" || k === "compare" };
-export function parseHash() {
-  const [tagPart, part2, part3] = location.hash.slice(1).split("/");
-  const tag = tagPart ? tagPart.toUpperCase() : document.querySelector('meta[name="initial-tag"]')?.content || null;
-  if (part2 && HASH_VIEW[part2]) {
-    const view = HASH_VIEW[part2];
-    const sub = part3 && SUB_VALID[view]?.(part3) ? part3 : null;
-    return { tag, techId: null, view, sub };
-  }
-  return { tag, techId: part2 || null, view: null, sub: null };
-}
-// Called whenever the pinned country, the active tab, or that tab's own
-// sub-tab changes, so the URL always reflects all three without needing
-// a fresh click on the country to "resync" it.
-export function syncHash() {
-  const viewId = document.querySelector(".view.on")?.id;
-  const suffix = VIEW_HASH[viewId];
-  const subKey = SUB_KEY[viewId];
-  const sub = subKey ? state[subKey] : null;
-  history.replaceState(null, "", "#" + state.pinned + (suffix ? "/" + suffix + (sub ? "/" + sub : "") : ""));
+// --- The tabs ----------------------------------------------------------------------------------------------------
+
+// Every tab, as its own file describes it:
+//   view          the id of its <section> in index.html
+//   hash          its name in the address ("#GBR/army"); the Technology tab has none ("#GBR")
+//   subTabs       the state key that holds its open sub-tab, and the sub-tabs there are ("#GBR/units/ships")
+//   render        draws it
+//   ranking       what the sidebar ranks countries by while it's open: { label, value(country), total }
+//   followsScope  redrawn when the sidebar switches between Europe and the whole world
+//   alwaysDrawn   drawn on every redraw, even while hidden
+// A function rather than a list: the tab files import this file, so their descriptions only exist once
+// everything has loaded.
+export const allTabs = () => [techTab, armiesTab, unitsTab, economyTab, tradeTab, lawsTab];
+export const tabOf = view => allTabs().find(t => t.view === view);
+export const openTab = () => tabOf(document.querySelector(".view.on")?.id);
+
+// Opens a tab's sub-tab, if the tab has sub-tabs (the name is checked by parseHash).
+export function setSubTab(view, sub) {
+  const tab = tabOf(view);
+  if (sub && tab?.subTabs) state[tab.subTabs.key] = sub;
 }
 
-// sync: false for callers that already wrote the exact hash they want
-// (a tech-anchor link, "#TAG/tech_id") right before calling this --
-// syncHash() only knows how to write "#TAG" or "#TAG/view_id" and
-// would otherwise clobber the tech id they just set.
+// sync: false for callers that already wrote the exact address they want (a tech's, "#TAG/tech_id") right before:
+// syncHash() only writes "#TAG" or "#TAG/tab/sub-tab" and would overwrite it.
 export function showView(id, { sync = true } = {}) {
   document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x.dataset.view === id));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === id));
@@ -62,16 +43,43 @@ export function showView(id, { sync = true } = {}) {
 }
 
 export function render() {
-  renderHeader(); renderSubtabs(); renderTree(); renderDetail();
-  if (viewOn("armyView")) renderArmies();
-  if (viewOn("unitView")) renderUnits();
-  if (viewOn("economyView")) renderEconomy();
-  if (viewOn("tradeView")) renderTrade();
-  if (viewOn("lawView")) renderLaws();
+  renderHeader();
+  for (const tab of allTabs()) if (tab.alwaysDrawn || viewOn(tab.view)) tab.render();
 }
 
-export const pin = (tag, { sync = true } = {}) => { state.pinned = tag; state.preview = null; document.body.classList.remove("picker-open"); if (sync) syncHash(); renderSidebar(); render(); };
+export const pin = (tag, { sync = true } = {}) => {
+  state.pinned = tag; state.preview = null;
+  document.body.classList.remove("picker-open");
+  if (sync) syncHash();
+  renderSidebar(); render();
+};
 
+// --- The address -------------------------------------------------------------------------------------------------
+// "#TAG" (a country, Technology tab), "#TAG/tech_id" (a country and one of its techs, scrolled to and highlighted),
+// "#TAG/tab" (another tab, e.g. "#SIC/economy"), or "#TAG/tab/sub-tab" ("#SIC/economy/resources", "#GBR/units/ships").
+// syncHash keeps the address up to date as you switch country, tab or sub-tab, so a link copied at any point
+// reopens exactly there.
+
+export function parseHash() {
+  const [tagPart, part2, part3] = location.hash.slice(1).split("/");
+  // The generated country pages (/country/france) name their country in a <meta> tag instead.
+  const tag = tagPart ? tagPart.toUpperCase() : document.querySelector('meta[name="initial-tag"]')?.content || null;
+  const tab = part2 && allTabs().find(t => t.hash === part2);
+  if (tab) {
+    const sub = part3 && tab.subTabs?.values.includes(part3) ? part3 : null;
+    return { tag, techId: null, view: tab.view, sub };
+  }
+  return { tag, techId: part2 || null, view: null, sub: null };
+}
+
+export function syncHash() {
+  const tab = openTab();
+  const sub = tab?.subTabs ? state[tab.subTabs.key] : null;
+  const path = tab?.hash ? "/" + tab.hash + (sub ? "/" + sub : "") : "";
+  history.replaceState(null, "", "#" + state.pinned + path);
+}
+
+// Following a link, or an address edited by hand.
 addEventListener("hashchange", () => {
   const { tag, techId, view, sub } = parseHash();
   // A link that names a tab or a tech is already the address we want: pinning its country mustn't write the
@@ -82,15 +90,14 @@ addEventListener("hashchange", () => {
     state.category = state.techs[techId].category; state.focusTech = techId;
     showView("techView", { sync: false }); scrollToTech(techId);
   } else if (view) {
-    if (sub && SUB_KEY[view]) state[SUB_KEY[view]] = sub;
-    // Still need to re-render on a sub-tab-only change (e.g.
-    // "#SIC/economy/buildings" -> "#SIC/economy/resources") even
-    // though the top-level view itself doesn't change.
+    setSubTab(view, sub);
+    // Redraw even when only the sub-tab changed ("#SIC/economy/buildings" -> "#SIC/economy/resources").
     if (!viewOn(view)) showView(view, { sync: false });
     else { renderSidebar(); render(); }
   }
 });
 
 document.getElementById("tabs").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (b) showView(b.dataset.view);
+  const button = e.target.closest("button");
+  if (button) showView(button.dataset.view);
 });

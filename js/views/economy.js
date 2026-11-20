@@ -271,6 +271,27 @@ export function econTip(c) {
   }).join("");
 }
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const economyTab = {
+  view: "economyView", hash: "economy", followsScope: true,
+  subTabs: { key: "econKind", values: ["buildings", "resources"] },
+  render: renderEconomy,
+  // The sidebar follows the table's sort column (arable land when resources are sorted by name). Until
+  // economy.json has loaded there's nothing to rank by, so the sidebar ranks as on the Technology tab.
+  ranking() {
+    if (!economy) return null;
+    const sortKey = state.econSort;
+    if (state.econKind === "resources") {
+      const id = sortKey === "name" ? "arable_land" : sortKey;
+      return { label: resName(id).toLowerCase(), value: c => Math.round(resourceTotal(c, id)) };
+    }
+    const sector = SECTORS.find(s => s.id === sortKey);
+    if (sector) return { label: `${sector.label.toLowerCase()} building levels`, value: c => econOf(c).sectors[sector.id] || 0 };
+    return { label: "building levels", value: c => econOf(c).total };
+  },
+};
+
 // --- Clicks ------------------------------------------------------------------------------------------------------
 
 document.getElementById("econTabs").addEventListener("click", e => {

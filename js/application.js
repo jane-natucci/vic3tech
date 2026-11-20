@@ -3,7 +3,7 @@
 // so a file has to be imported here (or by a file imported here) to do anything.
 import { state } from "./state.js";
 import { asset } from "./helpers.js";
-import { SUB_KEY, parseHash, showView, render } from "./page.js";
+import { parseHash, showView, render, setSubTab } from "./page.js";
 import { renderSidebar } from "./sidebar.js";
 import "./header.js";
 import "./tooltip.js";
@@ -31,7 +31,7 @@ fetch(asset("data.json")).then(r => r.json()).then(data => {
   const { tag, techId, view, sub } = parseHash();
   if (state.byTag[tag]) state.pinned = tag;
   if (techId && state.techs[techId]) { state.category = state.techs[techId].category; state.focusTech = techId; }
-  if (sub && SUB_KEY[view]) state[SUB_KEY[view]] = sub;
+  setSubTab(view, sub);
   layoutTrees();
   if (view) { showView(view); } else { renderSidebar(); render(); }
   if (techId && state.techs[techId]) requestAnimationFrame(() => scrollToTech(techId));

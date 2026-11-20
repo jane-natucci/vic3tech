@@ -232,6 +232,21 @@ function countriesWith(t) {
     ${lacking.length && holders.length ? `<h3>…and those that don't</h3><div class="flags">${flags(lacking)}</div>` : ""}`;
 }
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const techTab = {
+  view: "techView", hash: null,
+  // Drawn on every redraw, even while another tab is open (it always has been; it's cheap).
+  alwaysDrawn: true,
+  render() { renderSubtabs(); renderTree(); renderDetail(); },
+  // The sidebar ranks countries by how many techs of the open category they have. It's also the ranking for a
+  // tab that has none to offer yet.
+  ranking() {
+    const category = state.category;
+    return { label: `${category} techs`, value: c => catCount(c, category), total: state.layout[category].techs.length };
+  },
+};
+
 // --- Clicks and hovering -----------------------------------------------------------------------------------------
 
 document.getElementById("subtabs").addEventListener("click", e => {

@@ -7,11 +7,13 @@ import { economy, loadEconomy, aggregateEconomy } from "../views/economy.js";
 import { shareSave } from "./share.js";
 import { rememberSave } from "./recent.js";
 
-// --- Loading a melted save -------------------------------------------------
-// public/vic3/save-worker.js reads the file in a Web Worker and returns a
-// per-country summary; here it replaces the 1836 countries (and economy
-// countries) so every tab shows the save instead. "Back to 1836" restores
-// them. Nothing leaves the browser.
+// vic3/save-worker.js reads the file in a Web Worker and returns a per-country summary; applySave puts its countries
+// in place of the 1836 ones (and its states in place of the economy's), so every tab shows the save instead.
+// "Back to 1836" restores them. Nothing leaves the browser.
+
+// --- Reading the file --------------------------------------------------------------------------------------------
+
+// The strip under the header: what's happening, or which save is open.
 const saveStatus = document.getElementById("saveStatus");
 export function setSaveStatus(html, err = false) { saveStatus.innerHTML = html; saveStatus.classList.toggle("err", err); }
 function loadSaveFile(file) {
@@ -34,39 +36,17 @@ function loadSaveFile(file) {
   worker.postMessage(file);
 }
 
+// --- Showing a save ----------------------------------------------------------------------------------------------
+
 export async function applySave(sum, fileName, sharedId = null) {
   const econ = await loadEconomy();
   state.base ??= { countries: state.data.countries, econCountries: econ.countries, resourceIds: econ.resourceIds, pinned: state.pinned };
-  const units = Object.fromEntries(state.data.units.map(u => [u.id, u]));
-  const shipTypes = Object.fromEntries(state.data.ships.map(s => [s.id, s]));
-  const countries = [], econCountries = {};
-  for (const sc of sum.countries) {
-    const army = {}, navy = {};
-    for (const [id, a] of Object.entries(sc.army)) army[id] = { name: units[id]?.name || id, group: units[id]?.group, count: a.count, manpower: a.manpower };
-    for (const [id, n] of Object.entries(sc.navy)) navy[id] = { name: shipTypes[id]?.name || id, count: n };
-    const techs = sc.techs.filter(t => state.techs[t]);
-    countries.push({
-      // Countries created mid-game (tags like D09) have no name in the files;
-      // the game names them from their capital, so do the same.
-      tag: sc.tag, name: state.data.country_names?.[sc.tag] || econ.regions[sc.capitalRegion]?.name || sc.tag, tier: null,
-      region: state.data.state_regions?.[sc.capitalRegion] || null,
-      techs, techSet: new Set(techs), army, navy, prestige: sc.prestige, gdp: sc.gdp,
-      // Saves shared before laws were read have none.
-      laws: (sc.laws || []).map(l => l.id).filter(id => state.data.laws?.[id]),
-      lawSince: Object.fromEntries((sc.laws || []).map(l => [l.id, l.since])),
-      men: Object.values(sc.army).reduce((n, a) => n + a.manpower, 0),
-    });
-    econCountries[sc.tag] = { states: sc.states.map(st => {
-      const r = econ.regions[st.region] || { name: st.region, provinces: 0, arable_land: 0, arable: [], capped: {}, discoverable: {} };
-      return {
-        id: st.region, name: r.name, share: r.provinces ? Math.min(1, st.provinces / r.provinces) : 1,
-        arable_land: r.arable_land, arable_owned: st.arable_land, arable: r.arable, capped: r.capped, discoverable: r.discoverable,
-        buildings: Object.fromEntries(Object.entries(st.buildings).filter(([id]) => econ.buildings[id])),
-        trade: st.trade || {}, tradeCenter: st.tradeCenter || null,
-      };
-    }) };
-  }
-  econ.countries = econCountries;
+  const types = {
+    units: Object.fromEntries(state.data.units.map(u => [u.id, u])),
+    ships: Object.fromEntries(state.data.ships.map(s => [s.id, s])),
+  };
+  const countries = sum.countries.map(sc => countryFromSave(sc, econ, types));
+  econ.countries = Object.fromEntries(sum.countries.map(sc => [sc.tag, { states: sc.states.map(st => stateFromSave(st, econ)) }]));
   aggregateEconomy(econ);
   useCountries(countries);
   state.saveInfo = { date: sum.date, player: sum.player, fileName };
@@ -74,16 +54,54 @@ export async function applySave(sum, fileName, sharedId = null) {
   state.saveSummary = sum; state.sharedId = sharedId;
   // Just the date: the save strip under the header already says "Your save".
   document.getElementById("eraLabel").textContent = gameDate(sum.date);
-  // A shared link keeps the country it was shared with (#TAG); otherwise pin the player.
-  const linked = sharedId ? parseHash().tag : null;
-  if (linked && state.byTag[linked]) state.pinned = linked;
-  else if (sum.player && state.byTag[sum.player]) state.pinned = sum.player;
-  else if (!state.byTag[state.pinned]) state.pinned = countries[0]?.tag;
+  state.pinned = countryToOpen(sum, sharedId, countries);
   renderSaveBanner();
   state.preview = null;
   renderSidebar(); render();
   rememberSave(sum, fileName, sharedId);
 }
+
+// A country from the save, shaped like the 1836 ones in data.json (with its real manpower and the years its laws
+// were enacted). Techs and laws the game data doesn't know are left out.
+function countryFromSave(sc, econ, types) {
+  const army = {}, navy = {};
+  for (const [id, a] of Object.entries(sc.army)) army[id] = { name: types.units[id]?.name || id, group: types.units[id]?.group, count: a.count, manpower: a.manpower };
+  for (const [id, n] of Object.entries(sc.navy)) navy[id] = { name: types.ships[id]?.name || id, count: n };
+  const techs = sc.techs.filter(t => state.techs[t]);
+  return {
+    // Countries formed mid-game (tags like D09) have no name in the game files; the game names them after their
+    // capital's state, so the page does too.
+    tag: sc.tag, name: state.data.country_names?.[sc.tag] || econ.regions[sc.capitalRegion]?.name || sc.tag, tier: null,
+    region: state.data.state_regions?.[sc.capitalRegion] || null,
+    techs, techSet: new Set(techs), army, navy, prestige: sc.prestige, gdp: sc.gdp,
+    // Saves shared before laws were read have none.
+    laws: (sc.laws || []).map(l => l.id).filter(id => state.data.laws?.[id]),
+    lawSince: Object.fromEntries((sc.laws || []).map(l => [l.id, l.since])),
+    men: Object.values(sc.army).reduce((n, a) => n + a.manpower, 0),
+  };
+}
+
+// A state from the save, shaped like economy.json's: its region's name, resources and crops, the country's share of
+// the region (by provinces: a split state shares one pool of resources), its own arable land, and the buildings
+// the page shows.
+function stateFromSave(st, econ) {
+  const region = econ.regions[st.region] || { name: st.region, provinces: 0, arable_land: 0, arable: [], capped: {}, discoverable: {} };
+  return {
+    id: st.region, name: region.name, share: region.provinces ? Math.min(1, st.provinces / region.provinces) : 1,
+    arable_land: region.arable_land, arable_owned: st.arable_land, arable: region.arable, capped: region.capped, discoverable: region.discoverable,
+    buildings: Object.fromEntries(Object.entries(st.buildings).filter(([id]) => econ.buildings[id])),
+    trade: st.trade || {}, tradeCenter: st.tradeCenter || null,
+  };
+}
+
+// The country to open: a shared link's own (#TAG), else the player's, else the one open now if the save has it.
+function countryToOpen(sum, sharedId, countries) {
+  const linked = sharedId ? parseHash().tag : null;
+  if (linked && state.byTag[linked]) return linked;
+  if (sum.player && state.byTag[sum.player]) return sum.player;
+  return state.byTag[state.pinned] ? state.pinned : countries[0]?.tag;
+}
+
 // "1841.3.8" -> "8 Mar 1841"
 export function gameDate(date) {
   const [y, mo, d] = date.split(".").map(Number);
@@ -96,6 +114,8 @@ export function renderSaveBanner(extra = "") {
     ? `<b>Shared save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <button class="back" id="back1836">Back to 1836</button>`
     : `<b>Your save</b>${you ? `<span>playing ${esc(you)}</span>` : ""} <span class="file">${esc(state.saveInfo?.fileName || "")}</span>${extra || `<button class="share" id="shareSave" title="Upload this save's summary and copy a link anyone can open">Share this save</button>`}<button class="back" id="back1836">Back to 1836</button>`);
 }
+
+// --- Back to 1836 ------------------------------------------------------------------------------------------------
 
 function useCountries(countries) {
   state.data.countries = countries;
@@ -114,6 +134,8 @@ export function backTo1836() {
   setSaveStatus("");
   renderSidebar(); render();
 }
+
+// --- The dialog, and dropping a file ------------------------------------------------------------------------------
 
 const saveDialog = document.getElementById("saveDialog");
 document.getElementById("loadSave").addEventListener("click", () => saveDialog.showModal());

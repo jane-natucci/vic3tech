@@ -159,6 +159,19 @@ function goodsLines(kind, item) {
 
 const goodsText = goods => goods.map(g => `<span>${esc(g.name)}</span> ${+g.value.toFixed(2)}`).join(" · ");
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const unitsTab = {
+  view: "unitView", hash: "units",
+  subTabs: { key: "unitKind", values: Object.keys(UNIT_KINDS) },
+  render: renderUnits,
+  // The sidebar ranks countries by how many of the open kind they can build.
+  ranking() {
+    const kind = state.unitKind;
+    return { label: `${UNIT_KINDS[kind].toLowerCase()} it can build`, value: c => canBuild(c, kind), total: state.data[kind].length };
+  },
+};
+
 // --- Clicks ------------------------------------------------------------------------------------------------------
 
 document.getElementById("unitTabs").addEventListener("click", e => {

@@ -83,3 +83,11 @@ test("a link with just a country keeps the open tab, and the address shows it", 
   assert.equal(document.querySelector(".view.on").id, "armyView");
   assert.equal(location.hash, "#FRA/army");
 });
+
+// Used to accept "toString" (and the like) as a tab or sub-tab: every JavaScript object has one built in.
+test("an address naming a tab or sub-tab that doesn't exist is ignored, whatever the name", () => {
+  location.hash = "#GBR/units/toString";
+  assert.equal(parseHash().sub, null);
+  location.hash = "#GBR/toString";
+  assert.deepEqual(parseHash(), { tag: "GBR", techId: "toString", view: null, sub: null });
+});

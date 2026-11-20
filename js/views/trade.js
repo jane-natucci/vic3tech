@@ -260,6 +260,18 @@ function perGoodTable(c, states, goods, worth) {
     totalsPerGood(states).map(row).join("") + `</table>`;
 }
 
+// --- How the rest of the page sees this tab (see allTabs in page.js) --------------------------------------------
+
+export const tradeTab = {
+  view: "tradeView", hash: "trade", followsScope: true,
+  subTabs: { key: "tradeKind", values: ["treaties", "prices", "centers"] },
+  render: renderTrade,
+  // The sidebar ranks by trade center levels on that sub-tab, else by number of treaties.
+  ranking: () => state.tradeKind === "centers"
+    ? { label: "trade center levels", value: c => econOf(c).levels?.building_trade_center || 0 }
+    : { label: "treaties", value: c => treatiesOf(c.tag).length },
+};
+
 // --- Clicks ------------------------------------------------------------------------------------------------------
 
 document.getElementById("tradeTabs").addEventListener("click", e => {

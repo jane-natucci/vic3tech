@@ -29,13 +29,15 @@ function drawCornerFlag(c) {
 
 export function renderHeader() {
   const c = current();
-  // One compact line that never wraps on desktop (the header row must not
-  // grow): tech counts as production / military / society, the long form
-  // is in the tooltip. A loaded save adds prestige and GDP.
-  const full = state.data.categories.map(cat => `${catCount(c, cat)} ${cat}`).join(" · ") + ` techs · ${battalions(c)} battalions · ${ships(c)} ships` +
-    (c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : "") + (c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M GDP` : "");
-  const short = `Tech ${state.data.categories.map(cat => catCount(c, cat)).join(" / ")} · ${battalions(c)} battalions · ${ships(c)} ships` +
-    (c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : "") + (c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M` : "");
+  const counts = state.data.categories.map(category => catCount(c, category));
+  const forces = `${battalions(c)} battalions · ${ships(c)} ships`;
+  // A loaded save adds prestige and GDP.
+  const prestige = c.prestige != null ? ` · ${Math.round(c.prestige).toLocaleString("en")} prestige` : "";
+  const gdp = c.gdp ? ` · £${(c.gdp / 1e6).toFixed(1)}M` : "";
+  // One compact line that never wraps on desktop (the header row must not grow): tech counts as
+  // production / military / society. The long form is its tooltip.
+  const short = `Tech ${counts.join(" / ")} · ${forces}${prestige}${gdp}`;
+  const full = state.data.categories.map((category, i) => `${counts[i]} ${category}`).join(" · ") + ` techs · ${forces}${prestige}${gdp && gdp + " GDP"}`;
   document.getElementById("current").innerHTML = `${flagHtml(c)}<div><b class="cname">${esc(c.name)}</b>
     <div class="cstats" title="${esc(full)} (tech: production / military / society)">${esc(short)}</div></div>
     ${c.tier ? `<span class="pill" title="Which starting-tech package the game gives this country">Tech tier ${c.tier}</span>` : ""}
