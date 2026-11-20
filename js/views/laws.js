@@ -14,13 +14,13 @@ const lawsOf = c => c.laws || [];
 export const progressiveness = c => lawsOf(c).reduce((n, id) => n + (lawOf(id)?.progressiveness || 0), 0);
 // Groups a country has a law in -- caste hegemony and the Edo status
 // system only exist for the countries with that social hierarchy.
-const lawGroupsOf = c => state.data.law_groups.filter(g => g.laws.some(id => lawsOf(c).includes(id)));
+export const lawGroupsOf = c => state.data.law_groups.filter(g => g.laws.some(id => lawsOf(c).includes(id)));
 // Can't be enacted (yet): a tech it lacks, or none of the other-group
 // laws it needs (Subjecthood needs Monarchy, Theocracy, ...).
-const lawNeedsLaw = (c, id) => lawOf(id).laws?.length > 0 && !lawOf(id).laws.some(l => lawsOf(c).includes(l));
-const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t)) || lawNeedsLaw(c, id);
+export const lawNeedsLaw = (c, id) => lawOf(id).laws?.length > 0 && !lawOf(id).laws.some(l => lawsOf(c).includes(l));
+export const lawLocked = (c, id) => lawOf(id).techs.some(t => !c.techSet.has(t)) || lawNeedsLaw(c, id);
 // The game only shows some laws to named countries (Russia's Third Section), so neither does the page.
-const lawShown = (c, id) => !lawOf(id).only || lawOf(id).only.includes(c.tag) || lawsOf(c).includes(id);
+export const lawShown = (c, id) => !lawOf(id).only || lawOf(id).only.includes(c.tag) || lawsOf(c).includes(id);
 function lawChip(c, id, active) {
   const l = lawOf(id), locked = !active && lawLocked(c, id);
   const since = active && c.lawSince?.[id];

@@ -103,7 +103,7 @@ export function renderTree() {
 // gap. Years are only an estimate: real innovation depends on
 // universities and literacy, and tech spread gives free progress on top.
 const TYPICAL_INNOVATION = 100;
-function researchCost(c, t) {
+export function researchCost(c, t) {
   const R = state.data.research, eras = state.data.eras, base = R.era_cost[t.era];
   const missing = state.data.techs.filter(o => o.category === t.category && !c.techSet.has(o.id) && eras.indexOf(o.era) < eras.indexOf(t.era));
   const penalty = missing.reduce((sum, o) => sum + R.ahead_of_time_penalty * base * (eras.indexOf(t.era) - eras.indexOf(o.era)), 0);

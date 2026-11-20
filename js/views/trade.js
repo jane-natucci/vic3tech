@@ -15,14 +15,14 @@ import { economy, loadEconomy, econOf } from "./economy.js";
 // have none). Update 1.15 added copper in the middle of that list, so a
 // save from before it (one price row fewer) numbers its goods without it.
 state.tradeKind = "treaties"; state.treatyScope = "mine";
-const saveGoods = () => {
+export const saveGoods = () => {
   const goods = state.data.goods, rows = state.saveTrade?.prices.length;
   return rows && rows < goods.length ? goods.filter(g => g.id !== "copper") : goods;
 };
 const goodIndex = id => saveGoods().findIndex(g => g.id === id);
 const goodById = id => state.data.goods.find(g => g.id === id);
 const priceHistory = id => state.saveTrade?.prices[goodIndex(id)] || null;
-const priceOf = id => priceHistory(id)?.at(-1) ?? goodById(id)?.cost ?? 0;
+export const priceOf = id => priceHistory(id)?.at(-1) ?? goodById(id)?.cost ?? 0;
 const allTreaties = () => state.saveTrade ? state.saveTrade.treaties : state.data.treaties;
 export const treatiesOf = tag => allTreaties().filter(t => t.countries.includes(tag));
 const money = n => `£${Math.round(n).toLocaleString("en")}`;
@@ -30,7 +30,7 @@ const countryLabel = tag => { const c = state.byTag[tag]; return c ? `${flagHtml
 
 // Dates are "1834.4.22", or -- when the melter can't format a very early
 // one -- raw hours since year -5000 in the game's 365-day calendar.
-function treatyDate(v) {
+export function treatyDate(v) {
   if (!v) return "";
   if (/^\d{6,}$/.test(v)) {
     const days = Math.floor(+v / 24), year = Math.floor(days / 365) - 5000;
@@ -41,7 +41,7 @@ function treatyDate(v) {
 }
 
 // One article's value per week from `tag`'s point of view (+ received, − given).
-function articleValue(a, tag) {
+export function articleValue(a, tag) {
   let v = 0;
   if (a.article === "goods_transfer" && a.goods) v = (a.quantity || 0) * priceOf(a.goods);
   else if (a.article === "money_transfer") v = a.quantity || 0;

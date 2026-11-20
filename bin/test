@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs the JavaScript tests in test/ with Node's built-in test runner (Node 18 or newer, nothing to install).
+#   bin/test                          all of them
+#   bin/test test/views/tech_test.js  just one file
+set -euo pipefail
+cd "$(dirname "$0")/.."
+if [ $# -eq 0 ]; then set -- $(find test -name '*_test.js' | sort); fi
+exec node --test "$@"

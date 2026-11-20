@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # The JavaScript tests (test/, Node's built-in runner): a failure stops the deploy.
+      - run: bin/test
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::949665810427:role/vic3tech-deploy

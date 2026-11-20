@@ -12,10 +12,10 @@ import { scrollToTech, techStatus } from "./tech.js";
 export const UNIT_KINDS = { units: "Army units", ships: "Ships", mobilization: "Mobilization options" };
 const KEY_SHIP_STATS = ["ship_hit_points_max_add", "ship_armor_add", "ship_hull_damage_add", "ship_crew_damage_add",
                         "ship_accuracy_add", "ship_movement_speed_add", "ship_crew_max_add"];
-const itemEra = item => item.requires.length
+export const itemEra = item => item.requires.length
   ? state.data.eras[Math.min(...item.requires.map(id => state.data.eras.indexOf(state.techs[id]?.era)).filter(i => i >= 0))]
   : "start";
-function itemStatus(c, item) {
+export function itemStatus(c, item) {
   if (!item.requires.length) return item.principles?.length ? "av" : "has";
   if (item.requires.some(id => c.techSet.has(id))) return "has";
   return item.requires.some(id => state.techs[id] && techStatus(c, state.techs[id]) === "av") ? "av" : "lk";

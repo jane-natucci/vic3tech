@@ -30,6 +30,15 @@ bundle install && bundle exec ruby -run -e httpd . -p 8000   # then open http://
 
 Re-run `extract.rb` after a game patch. The page shows which game version its data came from in the footer.
 
+## Tests
+
+```bash
+bin/test                            # all of them
+bin/test test/views/tech_test.js    # one file
+```
+
+The tests in `test/` use Node's built-in test runner (Node 18 or newer); there's nothing to install. They run the real code from `js/` and `vic3/save-worker.js` against small made-up data in `test/fixtures/` (the game's own files aren't in this repo), on a stand-in page set up by `test/test_helper.js`, much like `test_helper.rb` in a Rails app. `save_worker_test.js` reads a small save written by hand in the game's format. GitHub Actions runs them before every deploy, and a failure stops it.
+
 ## Deploying
 
 Two kinds of deploy, because the game data can only be generated where Victoria 3 is installed:

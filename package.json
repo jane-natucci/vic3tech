@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "No dependencies: this file only tells Node that js/ and test/ are JavaScript modules. Run the tests with bin/test.",
+  "type": "module",
+  "scripts": {
+    "test": "bin/test"
+  }
+}
