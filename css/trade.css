@@ -6,3 +6,23 @@
 .trade-ctl { display: flex; gap: 14px; align-items: center; padding: 10px 20px 0; font-size: 0.85em; color: var(--muted); }
 .trade-ctl label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
 #tradeBody { padding: 12px 20px 40px; }
+/* Treaty cards */
+.treaties { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.treaty { background: var(--node); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 0.85em; }
+.treaty h3 { font-family: Georgia, serif; font-weight: normal; font-size: 1.15em; margin-bottom: 2px; }
+.treaty .meta { color: var(--muted); font-size: 0.85em; margin-bottom: 8px; }
+.treaty ul { list-style: none; }
+.treaty li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line); align-items: center; }
+.treaty li:first-child { border-top: none; }
+.treaty .dir { color: var(--muted); font-size: 0.9em; }
+.treaty .val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.treaty .net { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-weight: 600; }
+.treaty .net .pos { color: var(--inf); } .treaty .net .neg { color: var(--art); }
+/* Prices: goods icons, the bar against the base price, the sparkline */
+.ico-good { width: 18px; height: 18px; vertical-align: -4px; margin-right: 4px; }
+.prices td.num { text-align: right; }
+.pct { display: inline-block; width: 120px; height: 8px; background: var(--line); border-radius: 4px; position: relative; vertical-align: middle; }
+.pct i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.pct::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+svg.spark { width: 120px; height: 24px; vertical-align: middle; }
+svg.spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }

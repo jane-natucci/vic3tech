@@ -145,3 +145,8 @@ header h1 .era:hover small, header h1 .era[aria-expanded=true] small { color: va
 }
 .current b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
 .pill { font-size: 0.72em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+
+/* The footer */
+footer { font-size: 0.75em; color: var(--muted); padding: 8px 20px; border-top: 1px solid var(--line); }
+footer a { color: inherit; }
+footer .more { margin-top: 3px; }
