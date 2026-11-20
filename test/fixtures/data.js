@@ -58,7 +58,7 @@ export const data = () => ({
     { id: "ship_type_frigate", name: "Frigate", group: "light_ships", group_name: "Light Ships", requires: ["navigation"], obsolete_with: ["ironclad_tech"],
       very_obsolete_with: [], stats: [{ key: "ship_armor_add", name: "Ship Armor", value: 5 }], construction: [{ name: "Hardwood", value: 50 }], materiel: [], image: "ships/frigate.png" },
     { id: "ship_type_ship_of_the_line", name: "Ship of the Line", group: "capital_ships", group_name: "Capital Ships", requires: ["drydocks"], obsolete_with: ["ironclad_tech"],
-      very_obsolete_with: [], stats: [{ key: "ship_armor_add", name: "Ship Armor", value: 12 }], construction: [], materiel: [], image: "ships/sotl.png" },
+      very_obsolete_with: [], stats: [{ key: "ship_armor_add", name: "Ship Armor", value: 12 }, { key: "ship_power_projection_add", name: "Ship Power Projection", value: 100 }], construction: [], materiel: [], image: "ships/sotl.png" },
     { id: "ship_type_ironclad", name: "Ironclad", group: "capital_ships", group_name: "Capital Ships", requires: ["ironclad_tech"], obsolete_with: [],
       very_obsolete_with: [], stats: [{ key: "ship_armor_add", name: "Ship Armor", value: 40 }], construction: [], materiel: [], image: "ships/ironclad.png" },
   ],
@@ -66,7 +66,7 @@ export const data = () => ({
     { id: "mobilization_option_basic_supplies", name: "Basic Supplies", desc: "Bare minimum.", group: "supplies", group_name: "Supplies", requires: [], also_requires: [],
       principles: [], market_goods: [], effects: [], upkeep: [{ name: "Grain", value: 0.75 }], icon: "mobilization/basic.png" },
     { id: "mobilization_option_bloc_drill", name: "Bloc Drill", desc: "Needs a power bloc.", group: "training", group_name: "Training", requires: [], also_requires: [],
-      principles: ["Military Coordination"], market_goods: [], effects: [], upkeep: [], icon: "mobilization/drill.png" },
+      principles: ["Military Coordination"], market_goods: ["Small Arms"], effects: [], upkeep: [], icon: "mobilization/drill.png" },
   ],
   law_groups: [
     { id: "lawgroup_governance_principles", name: "Governance Principles", category: "power_structure", category_name: "Power structure",

@@ -32,3 +32,5 @@
 .ubody details { margin-top: 4px; color: var(--muted); }
 .ubody details summary { cursor: pointer; }
 .ubody p.desc { font-style: italic; color: var(--muted); margin-bottom: 6px; }
+/* "Obsolete with …" on a ship card: a fact about the ship, quieter than the badges about the country. */
+.pill.quiet { background: none; border: 1px solid var(--line); color: var(--muted); }
