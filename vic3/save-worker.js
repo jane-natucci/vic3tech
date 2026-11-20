@@ -105,6 +105,8 @@ async function read(file) {
       if (eq < 0) return;
       const key = line.slice(3, eq), val = line.slice(eq + 1);
       if (val === "{") { block = BLOCKS.has(key) ? key : null; blockLines = []; }
+      // A block written on one line, e.g. provinces={ } for a state that has lost all its provinces.
+      else if (BLOCKS.has(key) && val.startsWith("{")) entry[key] = [val.replace(/^\{|\}$/g, "").trim()].filter(Boolean);
       else entry[key] = val.replace(/^"|"$/g, "");
       return;
     }
