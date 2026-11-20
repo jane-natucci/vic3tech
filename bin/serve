@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# Serves the site locally, like `bin/rails server`:
+#   bundle exec bin/serve          http://localhost:8000
+#   bundle exec bin/serve 8080     another port
+#
+# Every file is sent with "Cache-Control: no-store", so reloading the page always shows the files as they are on
+# disk. (A plain `ruby -run -e httpd` doesn't say how long a browser may keep a file, so after an edit it can go on
+# showing the old CSS or JavaScript.) The live site doesn't need this: each deploy's files get a folder of their own.
+require "webrick"
+
+class NoStore < WEBrick::HTTPServlet::FileHandler
+  def do_GET(request, response)
+    super
+  ensure
+    response["Cache-Control"] = "no-store"
+  end
+end
+
+port = Integer(ARGV[0] || 8000)
+root = File.expand_path("..", __dir__)
+server = WEBrick::HTTPServer.new(Port: port, BindAddress: "127.0.0.1", AccessLog: [])
+server.mount("/", NoStore, root)
+trap("INT") { server.shutdown }
+trap("TERM") { server.shutdown }
+puts "Serving #{root} at http://localhost:#{port}"
+server.start

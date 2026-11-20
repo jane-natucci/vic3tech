@@ -25,10 +25,10 @@ Every save you load, from a file or a shared link, is kept in the browser's Inde
 ```bash
 ruby extract.rb                                   # default Steam path on macOS
 ruby extract.rb "/path/to/Victoria 3/game"        # or point it at your install
-bundle install && bundle exec ruby -run -e httpd . -p 8000   # then open http://localhost:8000
+bundle install && bundle exec bin/serve                      # then open http://localhost:8000
 ```
 
-Re-run `extract.rb` after a game patch. The page shows which game version its data came from in the footer.
+`bin/serve` tells the browser not to keep any file, so after an edit a plain reload shows it. Re-run `extract.rb` after a game patch. The page shows which game version its data came from in the footer.
 
 ## Tests
 
