@@ -57,12 +57,29 @@ test("searching the sidebar looks through every country, whatever the scope", ()
   fire("search", "input");
 });
 
-// A known quirk, kept here so it isn't forgotten: a link to another country *and* another tab pins the country
-// first, which writes the old tab into the address, and then opens the new tab without updating it again.
-test("following a link to another country's tab keeps that tab in the address", { todo: "the address keeps the old tab" }, () => {
+// Used to write the tab that was open before into the address (pinning the country synced the address first).
+test("following a link to another country's tab keeps that tab in the address", () => {
   fire("tabs", "click", { matches: ["button"], dataset: { view: "techView" } });
   location.hash = "#FRA/economy/resources";
   fire("window", "hashchange");
+  assert.equal(state.pinned, "FRA");
   assert.equal(document.querySelector(".view.on").id, "economyView");
   assert.equal(location.hash, "#FRA/economy/resources");
+});
+
+test("following a link to another country's tech keeps the tech in the address", () => {
+  location.hash = "#GBR/admiralty";
+  fire("window", "hashchange");
+  assert.equal(state.pinned, "GBR");
+  assert.equal(location.hash, "#GBR/admiralty");
+  assert.equal(state.focusTech, "admiralty");
+});
+
+test("a link with just a country keeps the open tab, and the address shows it", () => {
+  fire("tabs", "click", { matches: ["button"], dataset: { view: "armyView" } });
+  location.hash = "#FRA";
+  fire("window", "hashchange");
+  assert.equal(state.pinned, "FRA");
+  assert.equal(document.querySelector(".view.on").id, "armyView");
+  assert.equal(location.hash, "#FRA/army");
 });

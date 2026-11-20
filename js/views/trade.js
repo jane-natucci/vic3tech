@@ -79,6 +79,8 @@ function treatyCard(t, tag) {
 
 function sparkline(values) {
   if (!values?.length) return "";
+  // A save from a game's first days has a single price: draw it as a flat line.
+  if (values.length === 1) values = [values[0], values[0]];
   const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1) * 118 + 1).toFixed(1)},${(22 - (v - min) / span * 20).toFixed(1)}`).join(" ");
   return `<svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;

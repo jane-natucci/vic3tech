@@ -70,11 +70,14 @@ export function render() {
   if (viewOn("lawView")) renderLaws();
 }
 
-export const pin = tag => { state.pinned = tag; state.preview = null; document.body.classList.remove("picker-open"); syncHash(); renderSidebar(); render(); };
+export const pin = (tag, { sync = true } = {}) => { state.pinned = tag; state.preview = null; document.body.classList.remove("picker-open"); if (sync) syncHash(); renderSidebar(); render(); };
 
 addEventListener("hashchange", () => {
   const { tag, techId, view, sub } = parseHash();
-  if (state.byTag[tag] && tag !== state.pinned) pin(tag);
+  // A link that names a tab or a tech is already the address we want: pinning its country mustn't write the
+  // tab that's open now into it. A bare "#TAG" keeps the open tab, and the address says so.
+  const named = (techId && state.techs[techId]) || view;
+  if (state.byTag[tag] && tag !== state.pinned) pin(tag, { sync: !named });
   if (techId && state.techs[techId]) {
     state.category = state.techs[techId].category; state.focusTech = techId;
     showView("techView", { sync: false }); scrollToTech(techId);

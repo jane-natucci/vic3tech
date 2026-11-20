@@ -56,15 +56,22 @@ test("the prices tab lists the goods traded on the world market", () => {
   assert.match(html("tradeBody"), /Grain<\/td><td class="num">£20<\/td>/);
 });
 
-// A known bug, kept here so it isn't forgotten: a save from a game's first days has one price per good, and a
-// sparkline of one point divides by zero (the browser then logs "Expected number, NaN" for every good).
-test("a price history of a single point still draws a valid sparkline", { todo: "draws NaN" }, () => {
+// A save from a game's first days has one price per good; its sparkline used to divide by zero and draw NaN.
+test("a price history of a single point draws a flat line", () => {
   state.saveTrade = { treaties: [], prices: [[50], [40], [20], []] };
   fire("tradeTabs", "click", { matches: ["button"], dataset: { trade: "prices" } });
   const body = html("tradeBody");
   state.saveTrade = null;
-  assert.match(body, /<polyline points=/);
+  assert.match(body, /<polyline points="1\.0,22\.0 119\.0,22\.0"\/>/);
   assert.doesNotMatch(body, /NaN/);
+});
+
+test("a longer price history: oldest on the left, the range scaled to the box", () => {
+  state.saveTrade = { treaties: [], prices: [[40, 60, 50], [40], [20], []] };
+  fire("tradeTabs", "click", { matches: ["button"], dataset: { trade: "prices" } });
+  const body = html("tradeBody");
+  state.saveTrade = null;
+  assert.match(body, /<polyline points="1\.0,22\.0 60\.0,2\.0 119\.0,12\.0"\/>/);
 });
 
 test("the trade centers tab: the country's trade centers and their levels", async () => {
