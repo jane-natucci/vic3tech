@@ -6,7 +6,9 @@ Everything is read straight from the game's own files, not transcribed by hand.
 
 ## How it works
 
-- `index.html` — the whole site: one static page, plain HTML/CSS/JS, no build step or framework.
+- `index.html` — the page's layout. Plain HTML/CSS/JS, no build step or framework.
+- `js/` — the page's code as JavaScript modules, the way Rails apps write theirs today: `application.js` is the entry point and imports the rest; `views/` has one file per tab, `save/` the save loading, sharing and recent saves. Browsers load the files directly.
+- `css/` — the styles, one file per tab, loaded in order by `index.html`.
 - `extract.rb` — reads a local Victoria 3 install and writes `vic3/data.json`, `vic3/economy.json` and the images the page uses. Plain Ruby; needs [ImageMagick](https://imagemagick.org) (`magick`) for the images.
 - `deploy.sh` — uploads the page and the generated files to S3, served through CloudFront. See [Deploying](#deploying).
 
@@ -32,7 +34,7 @@ Re-run `extract.rb` after a game patch. The page shows which game version its da
 
 Two kinds of deploy, because the game data can only be generated where Victoria 3 is installed:
 
-- **Code** (`index.html` and our own files in `vic3/`): deployed automatically by GitHub Actions on every push to `main` (`./deploy.sh --code-only`). It reuses the game data already on S3.
+- **Code** (`index.html`, `js/`, `css/` and our own files in `vic3/`; the code goes to a new `/assets/<version>/` folder each time): deployed automatically by GitHub Actions on every push to `main` (`./deploy.sh --code-only`). It reuses the game data already on S3.
 - **Game data** (after a game patch, or anything `extract.rb` produces): run locally on a machine with Victoria 3 installed:
 
   ```bash

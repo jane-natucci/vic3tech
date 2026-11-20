@@ -1,0 +1,55 @@
+/* Technology tab: the tree and the detail panel. */
+/* Tech tree */
+#techView { flex-direction: row; }
+.tree-wrap { flex: 1; overflow: auto; position: relative; min-width: 0; }
+.subtabs { display: flex; gap: 18px; padding: 10px 20px 0; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; left: 0; z-index: 3; }
+.subtabs button { font: inherit; background: none; border: none; color: var(--muted); padding: 6px 0 9px; cursor: pointer; border-bottom: 2px solid transparent; }
+.subtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.subtabs button span { font-size: 0.8em; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.legend { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 0.78em; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--line); background: var(--node); }
+.legend i.av { border: 1.5px dashed var(--accent); }
+.legend i.lk { opacity: 0.35; }
+#tree { position: relative; margin: 0 20px 40px; }
+#tree svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.era-band { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line); }
+.era-band h2 { position: sticky; top: 0; font-size: 0.95em; padding: 10px 8px 6px; color: var(--muted); white-space: nowrap; }
+.node {
+  position: absolute;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px 4px 4px;
+  background: var(--node);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.8em; line-height: 1.2;
+  cursor: pointer;
+  transition: opacity 0.15s, filter 0.15s, border-color 0.15s;
+}
+.node img { width: 38px; height: 38px; flex: none; }
+.node.has { border-color: var(--arrow-on); box-shadow: 0 1px 0 var(--line); }
+.node.av { opacity: 0.8; border: 1.5px dashed var(--accent); }
+.node.lk { opacity: 0.3; filter: grayscale(1); }
+.node:hover, .node.focus { opacity: 1; filter: none; outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; }
+.node .x { position: absolute; top: 2px; right: 4px; font-size: 0.8em; color: var(--muted); }
+path.arr { fill: none; stroke: var(--arrow); stroke-width: 1.3; }
+path.arr.on { stroke: var(--arrow-on); stroke-width: 1.8; }
+path.arr.hl { stroke: var(--accent); stroke-width: 2.4; }
+
+/* Detail panel */
+.detail { width: 320px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; padding: 18px; font-size: 0.88em; line-height: 1.45; }
+.detail .empty { color: var(--muted); }
+.detail .top { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.detail .top img { width: 64px; height: 64px; }
+.detail h2 { font-size: 1.3em; line-height: 1.15; }
+.detail .meta { color: var(--muted); font-size: 0.85em; margin-top: 2px; }
+.detail h3 { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 14px 0 5px; font-family: inherit; font-weight: 600; }
+.detail p.desc { font-style: italic; color: var(--muted); }
+.detail ul { list-style: none; }
+.detail li { padding: 2px 0; display: flex; justify-content: space-between; gap: 10px; }
+.detail li .k { color: var(--muted); font-size: 0.85em; white-space: nowrap; }
+.detail li .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.detail .status { display: inline-block; margin-top: 6px; }
+.flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.flags span { font-size: 1.3em; cursor: default; }
+.flags span.none { font-size: 0.7em; border: 1px solid var(--line); border-radius: 4px; padding: 1px 3px; align-self: center; }
+.link { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); }

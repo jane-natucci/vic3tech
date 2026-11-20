@@ -1,0 +1,16 @@
+/* Economy tab. */
+/* Economy */
+#economyView { flex-direction: row; }
+.econ-main { flex: 1; overflow: auto; min-width: 0; }
+.econ-main .subtabs { position: sticky; top: 0; left: 0; }
+.econ-main table { margin: 12px 20px 40px; width: calc(100% - 40px); max-width: none; }
+.econ-main td.bar { min-width: 160px; width: 30%; }
+.econ-main .note { font-size: 0.78em; color: var(--muted); padding: 10px 20px 0; line-height: 1.45; }
+th .ico, td .ico, .detail .ico { width: 18px; height: 18px; vertical-align: -4px; margin-right: 4px; }
+.detail .blist li { align-items: center; }
+.detail .blist li span:first-child { display: flex; align-items: center; min-width: 0; }
+.detail details { margin-top: 4px; }
+.detail details summary { cursor: pointer; padding: 3px 0; }
+.detail details summary .k { float: right; }
+.detail details ul { padding: 2px 0 6px 12px; }
+.muted { color: var(--muted); }

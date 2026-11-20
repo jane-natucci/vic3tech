@@ -1,0 +1,68 @@
+/* Narrow windows and phones. Loaded last, so these rules win. */
+/* Narrower desktop windows: "Armies & navies" -> "Armies", "Units &
+   mobilization" -> "Units", so the header stays one row. */
+@media (max-width: 1280px) { .tabs .long, .build .long { display: none; } header { column-gap: 16px; } }
+
+/* Only shown on phones (see below). */
+.picker-head, .sheet-close { display: none; }
+
+/* Phones: one column. The country list becomes a full-screen picker
+   opened from the country button in the header, tech details slide up
+   as a bottom sheet, and wide tables scroll sideways. */
+@media (max-width: 760px) {
+  /* minmax(0, …) and min-width: 0 stop wide content (the tree, tables)
+     from stretching the page past the screen instead of scrolling. */
+  body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: 100dvh; }
+  header, main { min-width: 0; }
+  header { padding: 10px 12px 8px; gap: 8px; }
+  .save-banner { margin: 0 -12px -8px; padding: 7px 12px; }
+  header h1 { font-size: 1.15em; }
+  .tabs { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: none; white-space: nowrap; font-size: 0.85em; padding: 6px 12px; }
+  .tabs .long { display: none; } /* "Armies & navies" -> "Armies" so all four tabs fit */
+  .save-ctl { display: none; } /* loading a 300+ MB save is a desktop thing */
+  .current { order: 2; flex: 1 0 100%; margin-left: 0; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-size: 0.9em; }
+  .current > div { min-width: 0; flex: 1; }
+  .current .cstats { white-space: normal; } /* phones: wrapping is fine here */
+  .current::after { content: "Change ▾"; flex: none; font-size: 0.8em; color: var(--accent); }
+
+  aside { display: none; }
+  body.picker-open aside { display: block; position: fixed; inset: 0; z-index: 40; border: none; padding: 12px 12px 40px; overflow-y: auto; }
+  .picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .picker-head b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
+  .picker-head button { font: inherit; border: none; background: var(--ink); color: var(--bg); padding: 7px 16px; border-radius: 999px; }
+  aside input[type=search] { font-size: 16px; } /* smaller text makes iOS zoom in on focus */
+  /* Europe / Whole world as two pill buttons instead of native radios. */
+  .scope-toggle { gap: 6px; margin: 2px 0 12px; font-size: 0.9em; }
+  .scope-toggle label { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); }
+  .scope-toggle label:has(input:checked) { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .scope-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+  aside .hint { display: none; }
+  .country { padding: 9px 8px; font-size: 1em; }
+
+  main { min-height: 0; }
+  footer { display: none; } /* desktop shows the credits; on a phone it only eats screen space */
+  .subtabs { padding: 8px 12px 0; gap: 14px; overflow-x: auto; white-space: nowrap; }
+  .subtabs .legend { margin-left: 12px; }
+
+  #tree { margin: 0 12px 60px; }
+  #techView .detail {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; width: auto; max-height: 60dvh;
+    border-left: none; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.35);
+    padding: 16px 16px 28px; transform: translateY(105%); transition: transform 0.2s ease;
+  }
+  body.sheet-open #techView .detail { transform: none; }
+  .sheet-close { display: block; float: right; font: inherit; font-size: 1.1em; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 32px; height: 32px; border-radius: 50%; margin: -4px -4px 6px 8px; }
+
+  #armyView { padding: 12px; }
+  #armyView table, .econ-main table { font-size: 0.8em; }
+  td.bar, .econ-main td.bar { min-width: 120px; }
+  #economyView { flex-direction: column; overflow-y: auto; }
+  .econ-main { flex: none; overflow-x: auto; overflow-y: hidden; }
+  .econ-main table { margin: 10px 12px 16px; width: auto; }
+  #econDetail { display: block; width: auto; border-left: none; border-top: 1px solid var(--line); padding: 14px 16px 30px; }
+  .unit-note { padding: 8px 12px 0; }
+  #unitGrid { padding: 10px 12px 30px; gap: 10px; --rowhead: 58px; }
+  .urow-head { font-size: 0.85em; overflow-wrap: anywhere; }
+}

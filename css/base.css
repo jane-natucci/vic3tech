@@ -1,0 +1,147 @@
+/* Colours (light and dark), the header and the page layout. */
+:root {
+  color-scheme: light;
+  --bg: #f4efe4;
+  --panel: #fbf8f1;
+  --ink: #231d14;
+  --muted: #7a6d58;
+  --line: #d9cfbc;
+  --accent: #8a2c1f;
+  --accent-soft: #f1ddd6;
+  --node: #fffdf8;
+  --arrow: #b7a88d;
+  --arrow-on: #5a4a32;
+  --inf: #6b7f4e;
+  --cav: #b2803a;
+  --art: #8a2c1f;
+  --other: #8d8577;
+  --sotl: #2f4f6f;
+  --frig: #7a9cb8;
+  --gov: #6d4f82;
+}
+/* Dark: follows the system unless the visitor picked a theme with the
+   header's ☀️/🌙 button (stored, applied as data-theme on <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #17140f;
+    --panel: #201c16;
+    --ink: #eee5d3;
+    --muted: #a1937b;
+    --line: #3a3228;
+    --accent: #e0876f;
+    --accent-soft: #3b231c;
+    --node: #27221b;
+    --arrow: #4d4336;
+    --arrow-on: #c9b692;
+    --inf: #93a86f;
+    --cav: #d3a258;
+    --art: #d8735c;
+    --other: #8d8577;
+    --sotl: #7ea4c8;
+    --frig: #4f6f8d;
+    --gov: #a98bc0;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17140f;
+  --panel: #201c16;
+  --ink: #eee5d3;
+  --muted: #a1937b;
+  --line: #3a3228;
+  --accent: #e0876f;
+  --accent-soft: #3b231c;
+  --node: #27221b;
+  --arrow: #4d4336;
+  --arrow-on: #c9b692;
+  --inf: #93a86f;
+  --cav: #d3a258;
+  --art: #d8735c;
+  --other: #8d8577;
+  --sotl: #7ea4c8;
+  --frig: #4f6f8d;
+  --gov: #a98bc0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.theme-toggle { flex: none; font: inherit; font-size: 1em; line-height: 1; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: transparent; cursor: pointer; }
+.theme-toggle:hover { border-color: var(--accent); }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+h1, h2, h3, .serif { font-family: Georgia, "Times New Roman", serif; font-weight: normal; }
+
+header {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+header h1 { font-size: 1.35em; letter-spacing: -0.01em; }
+.brand { position: relative; }
+header h1 small { color: var(--muted); font-size: 0.7em; margin-left: 6px; }
+/* The date is also the button for recent saves (the menu below it). */
+header h1 .era { font: inherit; border: none; background: none; color: inherit; padding: 0; cursor: pointer; }
+header h1 .era small.caret { margin-left: 3px; font-size: 0.55em; }
+header h1 .era:hover small, header h1 .era[aria-expanded=true] small { color: var(--accent); }
+.recent { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; width: 380px; max-width: calc(100vw - 24px); max-height: 70vh; overflow-y: auto;
+          font-size: 0.85em; background: var(--panel); color: var(--ink);
+          border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); padding: 6px; }
+.recent h4 { font-size: 0.8em; font-weight: normal; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 8px 8px 4px; }
+.recent .row { display: flex; align-items: center; border-radius: 8px; }
+.recent .row:hover, .recent .row.on { background: var(--accent-soft); }
+.recent .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; font: inherit; text-align: left; border: none; background: none; color: inherit; padding: 7px 8px; cursor: pointer; }
+.recent .open .flag, .recent .open .none { font-size: 1.5em; flex: none; width: 1.4em; text-align: center; }
+.recent .open .none { font-size: 0.75em; color: var(--muted); }
+.recent .open span { min-width: 0; }
+.recent .open b { font-family: Georgia, serif; font-weight: normal; font-size: 1.1em; }
+.recent .open i { display: block; font-style: normal; color: var(--muted); font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent .del { flex: none; font: inherit; border: none; background: none; color: var(--muted); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; margin-right: 4px; }
+.recent .del:hover { color: var(--accent); background: var(--bg); }
+.recent .empty { color: var(--muted); padding: 4px 8px 8px; line-height: 1.45; }
+/* Which commit is deployed, like Achievement Chains' top bar. */
+.build { font-size: 0.72em; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.build:hover { color: var(--accent); border-color: var(--accent); }
+.tabs { display: flex; gap: 4px; }
+.tabs button {
+  font: inherit; font-size: 0.9em;
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
+  padding: 6px 14px; border-radius: 999px; cursor: pointer;
+}
+.tabs button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+/* Takes whatever room is left on the header row and wraps its own text,
+   rather than the whole block dropping to a new row when the stats line
+   grows (a loaded save adds prestige and GDP). */
+.current { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.95em; flex: 1 1 140px; min-width: 0; }
+.current > div { min-width: 0; }
+.current .cname, .current .cstats { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.current .cstats { font-size: 0.8em; color: var(--muted); }
+.current .flag { font-size: 1.6em; }
+/* A flag is a picture, sized from the text around it. */
+.fimg { height: 1em; width: 1.5em; object-fit: cover; border-radius: 2px; vertical-align: -0.15em; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); }
+.flag.none .fimg { display: none; }
+/* The plain-text summary of the open country, for people and search engines that read the page's own text. */
+.seo-about { padding: 14px 20px 6px; font-size: 0.82em; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--line); }
+.seo-about summary { cursor: pointer; color: var(--ink); margin-bottom: 6px; }
+.seo-about p { margin: 0 0 6px; max-width: 110ch; }
+.seo-about a { color: var(--accent); }
+/* The current country's flag in the top-left corner, as in the game; on a phone the country bar has it instead. */
+.brand { display: flex; align-items: center; gap: 12px; }
+.corner-flag { display: none; height: 44px; width: 60px; margin: -3px 0; flex: none; /* the flag may overhang the row a little, so the bar keeps the height it had */ filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
+@media (min-width: 761px) {
+  body.has-flag .corner-flag { display: block; }
+  body.has-flag .brand .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* still the page's heading, just not drawn */
+  .current .flag { display: none; }
+}
+.current b { font-family: Georgia, serif; font-weight: normal; font-size: 1.2em; }
+.pill { font-size: 0.72em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }

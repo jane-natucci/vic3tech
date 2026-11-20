@@ -1,0 +1,36 @@
+/* Loading a save: the button, the status strip and the dialog. */
+/* Loading a save */
+.save-ctl { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }
+.save-ctl button { font: inherit; border: 1px dashed var(--accent); background: transparent; color: var(--accent); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+/* Save status gets its own full-width strip under the header row (the
+   last flex item, wrapped onto its own line), so loading a save never
+   reshuffles the tabs and country. Empty = hidden. */
+.save-banner { order: 10; flex: 1 0 100%; display: flex; align-items: center; gap: 12px; margin: 2px -20px -14px; padding: 7px 20px; border-top: 1px solid var(--line); background: var(--accent-soft); font-size: 0.85em; color: var(--ink); }
+.save-banner:empty { display: none; }
+.save-banner.err { color: var(--accent); }
+.save-banner .file { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.save-banner .back { margin-left: auto; flex: none; font: inherit; border: 1px solid var(--accent); background: var(--panel); color: var(--accent); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.save-banner .share { flex: none; font: inherit; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.save-banner .share + .back { margin-left: 8px; }
+.save-banner .share:disabled { opacity: 0.6; cursor: default; }
+.save-banner .link { flex: 0 1 340px; min-width: 120px; font: inherit; font-size: 0.95em; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 3px 8px; margin-left: auto; }
+.save-banner .link + .share, .save-banner .file + .share { margin-left: auto; }
+.save-banner .bar { width: 160px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; flex: none; }
+.save-banner .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+#dropHint { position: fixed; inset: 12px; z-index: 50; display: none; align-items: center; justify-content: center; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-family: Georgia, serif; font-size: 1.6em; color: var(--accent); pointer-events: none; text-align: center; }
+body.dragging #dropHint { display: flex; }
+
+/* "Load your campaign" dialog: how to melt a save on pdx.tools, then drop it here. */
+#saveDialog { margin: auto; /* the global margin reset would otherwise pin it to the top-left */ max-width: 520px; width: calc(100% - 32px); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); padding: 22px 24px 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+#saveDialog::backdrop { background: rgba(0,0,0,0.45); }
+#saveDialog h2 { font-size: 1.35em; margin-bottom: 4px; }
+#saveDialog .lede { color: var(--muted); font-size: 0.9em; margin-bottom: 14px; line-height: 1.45; }
+#saveDialog ol { padding-left: 1.3em; font-size: 0.92em; line-height: 1.5; }
+#saveDialog li { margin-bottom: 8px; }
+#saveDialog li code { font-size: 0.9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+#saveDialog a { color: var(--accent); }
+.save-drop { margin: 14px 0 10px; border: 2px dashed var(--accent); border-radius: 12px; padding: 22px 16px; text-align: center; cursor: pointer; color: var(--accent); font-family: Georgia, serif; font-size: 1.1em; }
+.save-drop:hover, .save-drop.over { background: var(--accent-soft); }
+.save-drop small { display: block; font-family: inherit; font-size: 0.72em; color: var(--muted); margin-top: 4px; }
+#saveDialog .credit { font-size: 0.8em; color: var(--muted); line-height: 1.45; }
+#saveDialog .close { position: absolute; top: 12px; right: 12px; font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }

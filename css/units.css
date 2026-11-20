@@ -1,0 +1,34 @@
+/* Units & mobilization tab. */
+/* Units, ships, mobilization options */
+#unitView { overflow: auto; flex-direction: column; }
+#unitView .subtabs { position: sticky; top: 0; left: 0; }
+.unit-note { font-size: 0.78em; color: var(--muted); padding: 10px 20px 0; }
+#unitGrid { display: grid; gap: 10px 14px; padding: 12px 20px 40px; align-items: start; width: max-content; }
+.ucol-head { font-family: Georgia, serif; color: var(--muted); font-size: 0.95em; padding-bottom: 2px; border-bottom: 1px dashed var(--line); position: sticky; top: 44px; background: var(--bg); z-index: 1; }
+.urow-head { font-family: Georgia, serif; font-size: 1em; padding-top: 8px; position: sticky; left: 0; background: var(--bg); z-index: 1; }
+.ucell { display: flex; flex-direction: column; gap: 10px; }
+.ucard { width: 206px; background: var(--node); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 0.8em; line-height: 1.35; transition: opacity 0.15s, filter 0.15s; }
+.ucard.has { border-color: var(--arrow-on); }
+.ucard.av { opacity: 0.85; border: 1.5px dashed var(--accent); }
+.ucard.lk { opacity: 0.4; filter: grayscale(1); }
+.ucard:hover { opacity: 1; filter: none; }
+.uimg { display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--line) 35%, transparent); }
+.uimg.units img { width: 100%; height: 96px; object-fit: cover; object-position: center 30%; display: block; }
+.uimg.ships { height: 76px; padding: 8px; }
+.uimg.ships img { max-width: 100%; max-height: 100%; }
+.uimg.mobilization { height: 64px; }
+.uimg.mobilization img { width: 52px; height: 52px; }
+.ubody { padding: 8px 10px 10px; }
+.ubody b { font-family: Georgia, serif; font-weight: normal; font-size: 1.25em; display: block; }
+.ustatus { color: var(--muted); margin: 2px 0 6px; }
+.ubadges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.ustats { list-style: none; }
+.ustats li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 1px 0; }
+.ustats li .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ustats .bar { grid-column: 1 / -1; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 2px; }
+.ustats .bar i { display: block; height: 100%; background: var(--accent); }
+.ugoods { margin-top: 6px; color: var(--muted); }
+.ugoods span { color: var(--ink); }
+.ubody details { margin-top: 4px; color: var(--muted); }
+.ubody details summary { cursor: pointer; }
+.ubody p.desc { font-style: italic; color: var(--muted); margin-bottom: 6px; }

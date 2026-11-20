@@ -23,6 +23,8 @@ bucket="${VIC3_BUCKET:-vic3tech.jane.berlin}"
 
 md5() { if command -v md5sum >/dev/null; then md5sum | cut -d' ' -f1; else command md5 -q; fi; }
 tracked=$(git ls-files vic3)   # our own files in vic3/ (the rest is generated)
+# The page's code (js/, css/), served from /assets/<version>/ -- see below.
+code=$(find js css -type f \( -name '*.js' -o -name '*.css' \) | sort)
 tmp="$(mktemp -d)"
 
 if [ "${1:-}" = "--code-only" ]; then
@@ -47,14 +49,23 @@ else
 fi
 flags_version="$(tr -d '[:space:]' < "$tmp/VERSION")"
 
-version="$(cat "$data" $tracked | md5)"
+version="$(cat "$data" $tracked $code | md5)"
 version="${version:0:10}"
 # The header's "Build <sha>" link points at the deployed commit on GitHub.
 # A local deploy with uncommitted changes to the page or our files says so.
 sha="$(git rev-parse HEAD)"
 label="${sha:0:7}"
-[ -z "$(git status --porcelain -- index.html $tracked)" ] || label="${label}-dirty"
-sed -e "s/__DATA_VERSION__/${version}/g" -e "s/__FLAGS_VERSION__/${flags_version}/g" -e "s/__BUILD_SHA__/${sha}/g" -e "s/__BUILD_LABEL__/${label}/g" \
+[ -z "$(git status --porcelain -- index.html $tracked js css)" ] || label="${label}-dirty"
+fill=(-e "s/__DATA_VERSION__/${version}/g" -e "s/__FLAGS_VERSION__/${flags_version}/g")
+# The page's code goes to /assets/<version>/ (like a Rails app's fingerprinted assets): each deploy gets a folder of
+# its own that can be cached for a year, and the JavaScript files' imports of each other ("./helpers.js") stay inside
+# it, so a browser never mixes files from two deploys. Locally, index.html loads them from /js/ and /css/ as they are.
+for f in $code; do
+  mkdir -p "$tmp/assets/${version}/$(dirname "$f")"
+  sed "${fill[@]}" "$f" > "$tmp/assets/${version}/$f"
+done
+sed "${fill[@]}" -e "s/__BUILD_SHA__/${sha}/g" -e "s/__BUILD_LABEL__/${label}/g" \
+  -e "s#=\"/js/#=\"/assets/${version}/js/#g" -e "s#=\"/css/#=\"/assets/${version}/css/#g" \
   index.html > "$tmp/index.html"
 
 # The crawlable side: a page per country, the sitemap and the front page (seo.rb).
@@ -73,6 +84,10 @@ else
   aws s3 cp vic3/links.json "s3://${bucket}/links.json" --only-show-errors \
     --cache-control "public, max-age=3600" --content-type "application/json"
 fi
+for type in js:text/javascript css:text/css; do
+  aws s3 cp "$tmp/assets/" "s3://${bucket}/assets/" --recursive --only-show-errors --exclude "*" --include "*.${type%%:*}" \
+    --content-type "${type#*:}; charset=utf-8" --cache-control "public, max-age=31536000"
+done
 # The country pages have no file extension, so they say they are HTML themselves; --delete drops countries that no longer have a page.
 aws s3 sync "$tmp/seo/country" "s3://${bucket}/country" --delete --only-show-errors \
   --content-type "text/html; charset=utf-8" --cache-control "public, max-age=3600"

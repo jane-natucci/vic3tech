@@ -1,0 +1,8 @@
+/* Trade tab. */
+/* Trade: treaties and world-market prices */
+#tradeView { overflow: auto; flex-direction: column; }
+#tradeView .subtabs { position: sticky; top: 0; left: 0; }
+#tradeView .note { font-size: 0.78em; color: var(--muted); padding: 10px 20px 0; line-height: 1.45; max-width: 980px; }
+.trade-ctl { display: flex; gap: 14px; align-items: center; padding: 10px 20px 0; font-size: 0.85em; color: var(--muted); }
+.trade-ctl label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
+#tradeBody { padding: 12px 20px 40px; }
