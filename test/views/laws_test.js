@@ -157,3 +157,29 @@ test("across countries with Whole world counts every country with a law in that 
   assert.match(html("lawNote"), /^How many countries start with each army model law\./);
   state.scope = "europe";
 });
+
+// Used to say "0 of 1 countries" for every law of a group no counted country has (1 to avoid dividing by zero).
+test("across countries, a group no counted country has a law in says so instead of counting", () => {
+  const laws = tag => country(tag).laws;
+  const before = { GBR: laws("GBR"), FRA: laws("FRA"), JAP: laws("JAP") };
+  country("GBR").laws = before.GBR.filter(id => id !== "law_no_home_affairs");
+  country("FRA").laws = before.FRA.filter(id => id !== "law_no_home_affairs");
+  country("JAP").laws = [...before.JAP, "law_no_home_affairs"];
+  try {
+    fire("lawTabs", "click", { matches: ["button"], dataset: { lawKind: "compare" } });
+    fire("lawBody", "change", { id: "lawGroupPick", value: "lawgroup_internal_security" });
+    const body = html("lawBody");
+    assert.match(body, /<p class="muted">No European country starts with an internal security law — switch the sidebar to Whole world to see the countries that do\.<\/p>/);
+    assert.doesNotMatch(body, /of \d+ countries/);
+    assert.match(body, /<div class="bar"><i style="width:0%"><\/i><\/div>/);
+    assert.match(text(body), /No Home Affairs Nothing\./, "the laws themselves are still there to read");
+
+    state.scope = "all";
+    fire("lawBody", "change", { id: "lawGroupPick", value: "lawgroup_internal_security" });
+    assert.match(text(html("lawBody")), /1 of 1 countries/);
+    assert.doesNotMatch(html("lawBody"), /No European country/);
+  } finally {
+    Object.entries(before).forEach(([tag, l]) => { country(tag).laws = l; });
+    state.scope = "europe";
+  }
+});

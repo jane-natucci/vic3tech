@@ -2,7 +2,7 @@
 // files, or in a loaded save, with the year a law was enacted -- and, "Across countries", how many countries in
 // the sidebar's scope have each law of one group.
 import { state, current } from "../state.js";
-import { asset, flagHtml, esc, isEurope, fmtModifier } from "../helpers.js";
+import { asset, flagHtml, esc, isEurope, fmtModifier, hasWord } from "../helpers.js";
 import { syncHash, pin } from "../page.js";
 
 // This tab's own state: which view is open, the group "Across countries" shows, and the law whose box is open.
@@ -152,12 +152,21 @@ function renderCompareView(c) {
   state.lawGroup = group.id;
   const save = !!state.saveInfo;
   const countries = state.data.countries.filter(x => inScope(x) && lawsOf(x).length);
-  const counted = countries.filter(x => lawGroupsOf(x).includes(group)).length || 1;
+  // The countries with a law in this group (the Edo status system, for example, is Japan's only).
+  const counted = countries.filter(x => lawGroupsOf(x).includes(group)).length;
 
   document.getElementById("lawNote").innerHTML =
     `How many ${european()}countries ${haveWord()} each ${esc(group.name.toLowerCase())} law${save ? " in your save" : ""}. Click a flag to pick that country; the sidebar's Europe/Whole world switch changes who's counted.`;
   document.getElementById("lawBody").innerHTML =
-    groupPicker(groups, group) + group.laws.map(id => lawShare(c, id, holdersOf(countries, id), counted)).join("");
+    groupPicker(groups, group) + (counted ? "" : noneInGroup(group)) +
+    group.laws.map(id => lawShare(c, id, holdersOf(countries, id), counted)).join("");
+}
+
+// When no counted country has a law in the group: say so once, instead of "0 of 0" on every law.
+function noneInGroup(group) {
+  const name = group.name.toLowerCase(), article = /^[aeiou]/.test(name) ? "an" : "a";
+  const hint = state.scope === "all" ? "" : " — switch the sidebar to Whole world to see the countries that do";
+  return `<p class="muted">No ${european()}country ${hasWord()} ${article} ${esc(name)} law${state.saveInfo ? " in your save" : ""}${hint}.</p>`;
 }
 
 // The group dropdown, its groups under their categories.
@@ -173,11 +182,14 @@ function groupPicker(groups, selected) {
 
 function lawShare(c, id, holders, counted) {
   const law = lawOf(id);
-  const needs = law.techs.length ? ` · needs ${law.techs.map(tech => esc(techName(tech))).join(", ")}` : "";
+  const facts = [
+    counted ? `${holders.length} of ${counted} countries` : null,
+    law.techs.length ? `needs ${law.techs.map(tech => esc(techName(tech))).join(", ")}` : null,
+  ].filter(Boolean).join(" · ");
   return `<div class="law-share"><div>${lawChip(c, id, hasLaw(c, id))}
-      <div class="bar"><i style="width:${holders.length / counted * 100}%"></i></div>
+      <div class="bar"><i style="width:${counted ? holders.length / counted * 100 : 0}%"></i></div>
       ${law.desc ? `<p class="law-desc">${esc(law.desc)}</p>` : ""}
-      <div class="law-detail">${holders.length} of ${counted} countries${needs}
+      <div class="law-detail">${facts}
       ${modifierList(law)}</div></div>
     <div class="law-flags">${flagButtons(holders) || `<span class="muted" style="font-size:0.7em">None</span>`}</div></div>`;
 }
